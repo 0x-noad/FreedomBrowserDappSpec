@@ -1,0 +1,16 @@
+{
+  "schema": "freedom-manifest/2",
+  "name": "Files check",
+  "description": "Conformance fixture for the Files provider: exercises every files_* method.",
+  "icon": "./icon.png",
+  "version": "1.0.0",
+  "capabilities": {
+    "files": {
+      "private":      { "why": "Writes and reads test files in this dapp's private folder." },
+      "read-shared":  { "why": "Lists shared files to check scope narrowing.",
+                        "scope": { "types": ["image/*", "application/json"] } },
+      "write-shared": { "why": "Adds a test file to the shared folder, then deletes it." }
+    }
+  },
+  "source": "https://example.invalid/FreedomBrowserDappSpec/examples/files"
+}

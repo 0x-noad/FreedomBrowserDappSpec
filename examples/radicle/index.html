@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radicle check</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <img src="./icon.png" alt="" width="32" height="32">
+    <div>
+      <h1>Radicle check</h1>
+      <p>Conformance fixture for <code>providers/radicle.md</code> §11. Needs the Radicle integration enabled. Press <b>Add</b> on the consent sheet, enter a public RID, then <b>Run</b>.</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <p id="detect">Checking…</p>
+    <div class="row">
+      <input id="rid" placeholder="rad:z… (a public repository to seed and unseed)" size="48">
+    </div>
+    <div class="row">
+      <button id="connect" disabled>Request capabilities</button>
+      <button id="run" disabled>Run</button>
+      <button id="write" disabled title="Creates one issue in the repository above, as you">Write one issue</button>
+    </div>
+    <p id="summary" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <table id="results">
+      <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Manual checks</h2>
+    <ol class="manual">
+      <li>The consent sheet showed two Radicle rows with always-allow toggles, and the <code>signing</code> row said the dapp will author content as you and that writes cannot be recalled.</li>
+      <li>With <code>node</code> always-allow <b>on</b>: the run’s seed showed no prompt. With it <b>off</b>: seed and unseed each prompted in the Dapps pane naming the RID.</li>
+      <li>Seed a repository yourself (outside this dapp), enter its RID above and run: the unseed step prompts even with always-allow on, and the prompt says you seeded it yourself.</li>
+      <li>While the run holds the seed, the details page lists the repository under this dapp with an <b>Unseed</b> action; a repository you seeded yourself is not listed there.</li>
+      <li>The header of the details page links <code>source</code> to the internal repo page.</li>
+      <li>Revoking <code>radicle:node</code> leaves the repository seeded; removing the dapp offers to unseed it with <i>keep</i> selected.</li>
+      <li>On a tab Freedom Agent holds, <b>Write one issue</b> prompts with the issue’s content.</li>
+    </ol>
+  </section>
+
+  <script src="./harness.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

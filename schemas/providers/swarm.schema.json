@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedom.example/schemas/providers/swarm.schema.json",
+  "title": "capabilities.swarm",
+  "description": "The `swarm` provider's block: byte-for-byte the block defined by freedom-manifest/1 (upstream src/main/swarm/permission-manifests.js). At least one key is required. See providers/swarm.md §6.",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "properties": {
+    "publish":   { "$ref": "#/$defs/row", "description": "swarm:publish — swarm_publishData, swarm_publishFiles, swarm_publishChunk (per-call; always-allow = autoApprove.publish)." },
+    "feeds":     { "$ref": "#/$defs/row", "description": "swarm:feeds — swarm_createFeed, swarm_updateFeed, swarm_writeFeedEntry (per-call; always-allow = autoApprove.feeds)." },
+    "signing":   { "$ref": "#/$defs/row", "description": "swarm:signing — swarm_getSigningIdentity, swarm_writeSingleOwnerChunk (per-call; always-allow = autoApprove.signing)." },
+    "messaging": { "$ref": "#/$defs/row", "description": "swarm:messaging — swarm_getMessagingIdentity, swarm_subscribe, swarm_sendPss, swarm_sendGsoc (per-call; always-allow = autoApprove.messaging)." }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "type": "string", "minLength": 1, "maxLength": 140 }
+      }
+    }
+  }
+}

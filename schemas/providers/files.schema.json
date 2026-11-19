@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedom.example/schemas/providers/files.schema.json",
+  "title": "capabilities.files",
+  "description": "The `files` provider's block of a freedom-manifest/2 `capabilities` object. See providers/files.md §6.",
+  "type": "object",
+  "minProperties": 1,
+  "additionalProperties": false,
+  "properties": {
+    "private": {
+      "description": "files:private — read and write the dapp's own private folder (consent tier).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "$ref": "#/$defs/why" }
+      }
+    },
+    "read-shared": {
+      "description": "files:read-shared — read files in the shared pool, narrowed to `scope` (consent tier).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "$ref": "#/$defs/why" },
+        "scope": { "$ref": "#/$defs/sharedReadScope" }
+      }
+    },
+    "write-shared": {
+      "description": "files:write-shared — add, overwrite, delete, rename, copy into and setPublished on the dapp's own shared files (consent tier).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "$ref": "#/$defs/why" }
+      }
+    }
+  },
+  "$defs": {
+    "why": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 140
+    },
+    "mimePattern": {
+      "description": "A MIME type (`image/png`) or a type-family pattern (`image/*`).",
+      "type": "string",
+      "pattern": "^[a-z0-9!#$&^_.+-]+/([a-z0-9!#$&^_.+-]+|\\*)$"
+    },
+    "author": {
+      "description": "A dapp key (providers/files.md §8.1, SPEC.md §3.2), or the literal `user` or `agent`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "sharedReadScope": {
+      "description": "Scope of files:read-shared. An omitted field means all.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/mimePattern" }
+        },
+        "authors": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/author" }
+        }
+      }
+    }
+  }
+}

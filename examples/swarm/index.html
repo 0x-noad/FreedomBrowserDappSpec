@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swarm check</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <img src="./icon.png" alt="" width="32" height="32">
+    <div>
+      <h1>Swarm check</h1>
+      <p>Conformance fixture for <code>providers/swarm.md</code> §11. Needs a running Bee node with a usable postage batch. Press <b>Add</b> on the consent sheet, then <b>Run</b>.</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <p id="detect">Checking…</p>
+    <div class="row">
+      <button id="connect" disabled>Request capabilities</button>
+      <button id="run" disabled>Run</button>
+    </div>
+    <p id="summary" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <table id="results">
+      <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Manual checks</h2>
+    <ol class="manual">
+      <li>The consent sheet showed four Swarm rows, each with an always-allow toggle (off by default), and the line <i>Publishing spends your Swarm postage.</i></li>
+      <li>With every row ticked and always-allow <b>on</b>: the run’s publish, feed and send steps showed no prompt.</li>
+      <li>Re-add with always-allow <b>off</b>: each publish, feed write and send prompted in the Dapps pane, naming size and content type, feed name and payload size, or kind, topic and payload size.</li>
+      <li>With no Swarm row ticked, <code>swarm_requestAccess</code> showed the shipped connect prompt.</li>
+      <li>With the identity vault locked, the first <code>swarm_createFeed</code> showed the unlock prompt, then completed.</li>
+      <li>The details page lists the publisher identity (app-scoped), the feed <code>spec-check</code>, and the publish history entries from this run.</li>
+      <li>The Wallet tab’s Swarm row is hidden for this dapp; a site with only a <code>freedom-manifest/1</code> still shows it.</li>
+      <li>Revoking <code>swarm:feeds</code> on the details page removes the grant and keeps the feed record (<code>swarm_listFeeds</code> still returns it).</li>
+    </ol>
+  </section>
+
+  <script src="./harness.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

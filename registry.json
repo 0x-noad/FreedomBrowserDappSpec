@@ -1,0 +1,180 @@
+{
+  "$comment": "Capability registry for the Freedom Browser Dapp Specification, specVersion 1. Generated from providers/*.md; every capability a host may grant, with its tier, scope schema, the methods it unlocks and its consent-sheet string (SPEC.md §6.1, §12.5). Reserved prefixes carry no capabilities.",
+  "specVersion": "1",
+  "providers": {
+    "files": {
+      "displayName": "Files",
+      "surface": "window.dapp",
+      "status": "stable",
+      "version": "1",
+      "document": "providers/files.md",
+      "schema": "schemas/providers/files.schema.json",
+      "needsIdentityVault": false
+    },
+    "swarm": {
+      "displayName": "Swarm",
+      "surface": "window.swarm",
+      "status": "stable",
+      "version": "1.0",
+      "document": "providers/swarm.md",
+      "schema": "schemas/providers/swarm.schema.json",
+      "needsIdentityVault": true,
+      "sheetNote": "Publishing spends your Swarm postage."
+    },
+    "radicle": {
+      "displayName": "Radicle",
+      "surface": "window.radicle",
+      "status": "stable",
+      "version": "0.2",
+      "document": "providers/radicle.md",
+      "schema": "schemas/providers/radicle.schema.json",
+      "needsIdentityVault": false
+    }
+  },
+  "reserved": {
+    "dapp": "the core's method prefix",
+    "ipfs": "a future write surface (pin, add, IPNS); SPEC.md §12.1",
+    "chain": "a future public-tier verified-read surface; SPEC.md §12.1",
+    "ethereum": "the wallet stays beside the specification; SPEC.md §6.14"
+  },
+  "capabilities": [
+    {
+      "id": "files:private",
+      "provider": "files",
+      "manifestKey": "private",
+      "tier": "consent",
+      "alwaysAllow": "not-applicable",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Keep files on this device that only this dapp can open",
+      "methods": [
+        "files_list", "files_read", "files_stat", "files_readJson",
+        "files_write", "files_writeJson", "files_delete", "files_rename",
+        "files_copy", "files_setPublished", "files_subscribe", "files_unsubscribe"
+      ],
+      "methodsNote": "On root \"private\"; files_copy additionally needs the write capability of its destination root.",
+      "events": ["files:changed"]
+    },
+    {
+      "id": "files:read-shared",
+      "provider": "files",
+      "manifestKey": "read-shared",
+      "tier": "consent",
+      "alwaysAllow": "not-applicable",
+      "needsIdentityVault": false,
+      "scope": { "$ref": "schemas/providers/files.schema.json#/$defs/sharedReadScope" },
+      "consentString": "Read files in your shared folder",
+      "mandatoryDisclosure": "Everything in your shared folder, including which dapp added each file, is visible to every dapp you allow to read it.",
+      "methods": [
+        "files_list", "files_read", "files_stat", "files_readJson",
+        "files_subscribe", "files_unsubscribe"
+      ],
+      "methodsNote": "On root \"shared\", narrowed to scope.",
+      "events": ["files:changed"]
+    },
+    {
+      "id": "files:write-shared",
+      "provider": "files",
+      "manifestKey": "write-shared",
+      "tier": "consent",
+      "alwaysAllow": "not-applicable",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Add files to your shared folder",
+      "methods": [
+        "files_write", "files_writeJson", "files_delete", "files_rename",
+        "files_copy", "files_setPublished"
+      ],
+      "methodsNote": "On root \"shared\", own files only.",
+      "events": []
+    },
+    {
+      "id": "swarm:publish",
+      "provider": "swarm",
+      "manifestKey": "publish",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Publish data to Swarm using your postage",
+      "methods": ["swarm_publishData", "swarm_publishFiles", "swarm_publishChunk"],
+      "methodsNote": "Also connects the key (swarm_requestAccess, swarm_getUploadStatus, swarm_unsubscribe). Always-allow = autoApprove.publish.",
+      "events": []
+    },
+    {
+      "id": "swarm:feeds",
+      "provider": "swarm",
+      "manifestKey": "feeds",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "needsIdentityVault": true,
+      "scope": null,
+      "consentString": "Create and update Swarm feeds signed by an identity for this dapp",
+      "methods": ["swarm_createFeed", "swarm_updateFeed", "swarm_writeFeedEntry"],
+      "methodsNote": "Shares one feed grant and one app-scoped identity with swarm:signing. Always-allow = autoApprove.feeds.",
+      "events": []
+    },
+    {
+      "id": "swarm:signing",
+      "provider": "swarm",
+      "manifestKey": "signing",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "needsIdentityVault": true,
+      "scope": null,
+      "consentString": "Sign Swarm chunks with an identity for this dapp",
+      "methods": ["swarm_getSigningIdentity", "swarm_writeSingleOwnerChunk"],
+      "methodsNote": "Always-allow = autoApprove.signing.",
+      "events": []
+    },
+    {
+      "id": "swarm:messaging",
+      "provider": "swarm",
+      "manifestKey": "messaging",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Send and receive Swarm messages",
+      "methods": ["swarm_getMessagingIdentity", "swarm_subscribe", "swarm_sendPss", "swarm_sendGsoc"],
+      "methodsNote": "Sends prompt per call unless always-allow (autoApprove.messaging); identity and subscribe do not prompt after the grant.",
+      "events": ["message"]
+    },
+    {
+      "id": "radicle:node",
+      "provider": "radicle",
+      "manifestKey": "node",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "neverAutoApprove": ["radicle_unseed of a repository the user seeded by hand"],
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Seed and sync Radicle repositories on your node",
+      "methods": ["radicle_seed", "radicle_unseed", "radicle_sync"],
+      "methodsNote": "Also connects the key (radicle_getNodeStatus, radicle_listSeededRepos, radicle_getSeedStatus, radicle_disconnect). radicle_sync never prompts. Always-allow = node auto-approve.",
+      "events": ["seedStatus"]
+    },
+    {
+      "id": "radicle:signing",
+      "provider": "radicle",
+      "manifestKey": "signing",
+      "tier": "per-call",
+      "alwaysAllow": "eligible",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Act as you on Radicle: read your identity and write issues and comments in your name",
+      "mandatoryDisclosure": "This dapp will author content as you on the Radicle network. Writes cannot be recalled once announced.",
+      "methods": ["radicle_getIdentity", "radicle_createIssue", "radicle_commentIssue", "radicle_editIssueState", "radicle_commentPatch"],
+      "methodsNote": "Signs with the user's single Radicle node identity. Always-allow = signing auto-approve.",
+      "events": []
+    }
+  ],
+  "coreMethods": {
+    "public": [
+      "dapp_requestCapabilities", "dapp_getCapabilities", "dapp_getProviders",
+      "dapp_relinquish", "dapp_getManifest", "dapp_cancelJob", "dapp_fetch"
+    ],
+    "note": "dapp_fetch exists on web3:// origins only (SPEC.md §7.14)."
+  },
+  "coreEvents": ["capabilitiesChanged", "updatePending", "updateApplied", "providersChanged", "job:progress", "job:done", "job:failed"]
+}

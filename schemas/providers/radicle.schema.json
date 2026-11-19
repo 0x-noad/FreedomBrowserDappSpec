@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedom.example/schemas/providers/radicle.schema.json",
+  "title": "capabilities.radicle",
+  "description": "The `radicle` provider's block (new in freedom-manifest/2). At least one key is required. See providers/radicle.md §6.",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "properties": {
+    "node":    { "$ref": "#/$defs/row", "description": "radicle:node — radicle_seed, radicle_unseed, radicle_sync (per-call; always-allow = node auto-approve; unseed of a user-seeded repo always prompts)." },
+    "signing": { "$ref": "#/$defs/row", "description": "radicle:signing — radicle_getIdentity and every collaborative-object write, as the user's single Radicle identity (per-call; always-allow = signing auto-approve)." }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "type": "string", "minLength": 1, "maxLength": 140 }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "freedom-manifest/2",
+  "name": "Radicle check",
+  "description": "Conformance fixture for the Radicle provider's integration points: unified sheet, seed records, unseed prompting rules.",
+  "icon": "./icon.png",
+  "version": "1.0.0",
+  "capabilities": {
+    "radicle": {
+      "node":    { "why": "Seeds the repository you enter below, then unseeds it." },
+      "signing": { "why": "Reads your Radicle identity to display it. Writes nothing unless you press the write button." }
+    }
+  },
+  "source": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5"
+}

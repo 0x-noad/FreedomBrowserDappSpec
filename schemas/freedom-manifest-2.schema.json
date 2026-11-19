@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedom.example/schemas/freedom-manifest-2.schema.json",
+  "title": "freedom-manifest/2",
+  "description": "A Freedom dapp manifest, served as /freedom-manifest.json at the dapp's root (bzz, ipfs, ipns) or inline in a <script type=\"application/freedom-manifest+json\"> element (web3 only). Normative text: SPEC.md §4. Three rules the schema cannot express are checked by the host: at most 64 capabilities in total across all provider blocks (SPEC.md §4.5), `icon` must be a relative path on served schemes and a `data:` URI on web3:// (SPEC.md §4.4), and `$schema` is allowed in the served file only (SPEC.md §4.2). Size caps: 8 KiB served, 32 KiB inline on web3://.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "description", "icon", "version", "capabilities"],
+  "properties": {
+    "$schema": {
+      "description": "Editor hint: the URL of this schema. Ignored by the host; allowed in the served freedom-manifest.json only, not inline on web3:// (SPEC.md §4.2).",
+      "type": "string"
+    },
+    "schema": {
+      "const": "freedom-manifest/2"
+    },
+    "name": {
+      "description": "Display only; never the dapp's identity (SPEC.md §3.2).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "icon": {
+      "description": "A relative path (`./icon.png`) on bzz/ipfs/ipns, or a `data:` URI of a PNG, JPEG or WebP on web3://. The image must be ≤ 16 KiB, 8–512 px on each side; the host re-encodes it (SPEC.md §4.4).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 22000,
+      "anyOf": [
+        { "$ref": "#/$defs/relativePath" },
+        { "$ref": "#/$defs/iconDataUri" }
+      ]
+    },
+    "version": {
+      "description": "Shown by the update notice (SPEC.md §5.3). Any string up to 32 characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[a-z][a-z0-9+.-]*://[^\\s]+$",
+      "maxLength": 256
+    },
+    "source": {
+      "description": "Where the dapp's code lives: a `rad://` RID or a URL. Shown on the details page.",
+      "type": "string",
+      "maxLength": 256,
+      "anyOf": [
+        { "pattern": "^rad:(//)?z[1-9A-HJ-NP-Za-km-z]{20,60}(/.*)?$" },
+        { "format": "uri", "pattern": "^[a-z][a-z0-9+.-]*://[^\\s]+$" }
+      ]
+    },
+    "author": {
+      "description": "Free text, unverified. The consent sheet still names the dapp key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "url": { "type": "string", "format": "uri", "pattern": "^[a-z][a-z0-9+.-]*://[^\\s]+$", "maxLength": 256 }
+      }
+    },
+    "minSpecVersion": {
+      "description": "The lowest core specVersion the dapp needs; the host shows \"needs a newer Freedom\" when its own is lower.",
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "publicKey": {
+      "description": "Ed25519 public key, multibase (base58btc `z…`), for a signed manifest (SPEC.md §4.6).",
+      "type": "string",
+      "pattern": "^z[1-9A-HJ-NP-Za-km-z]{40,60}$"
+    },
+    "signature": {
+      "description": "Ed25519 signature, multibase (base58btc `z…`), over the RFC 8785 canonical JSON of this object with `signature` removed (SPEC.md §4.6).",
+      "type": "string",
+      "pattern": "^z[1-9A-HJ-NP-Za-km-z]{80,100}$"
+    },
+    "rotation": {
+      "description": "The previous signing key's endorsement of `publicKey`: `from` is the previous key, `signature` its Ed25519 signature over the UTF-8 bytes of the new `publicKey` string (SPEC.md §4.6).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "signature"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^z[1-9A-HJ-NP-Za-km-z]{40,60}$" },
+        "signature": { "type": "string", "pattern": "^z[1-9A-HJ-NP-Za-km-z]{80,100}$" }
+      }
+    }
+  },
+  "dependentRequired": {
+    "publicKey": ["signature"],
+    "signature": ["publicKey"],
+    "rotation": ["publicKey"]
+  },
+  "$defs": {
+    "relativePath": {
+      "description": "A same-origin relative path: no scheme (nothing of the form `name:`), no leading `/`, no `..` segment, no control characters.",
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^(?![a-zA-Z][a-zA-Z0-9+.-]*:)(\\./)?(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\u0000-\\u001f]+$"
+    },
+    "iconDataUri": {
+      "type": "string",
+      "pattern": "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$"
+    },
+    "capabilities": {
+      "description": "One sub-block per provider id (SPEC.md §4.3). Known providers are validated by their own schema; an unknown provider id (including the reserved `ipfs`, `chain` and `ethereum`, which a future revision may define) does not invalidate the manifest and is shown as ungrantable (SPEC.md §4.3, §12.4). Only `dapp`, the core's own prefix, is refused. The `swarm` block is byte-for-byte freedom-manifest/1's.",
+      "type": "object",
+      "properties": {
+        "files":   { "$ref": "providers/files.schema.json" },
+        "swarm":   { "$ref": "providers/swarm.schema.json" },
+        "radicle": { "$ref": "providers/radicle.schema.json" }
+      },
+      "additionalProperties": {
+        "description": "A provider this schema does not know. Must be an object of rows; the host shows it as ungrantable.",
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["why"],
+          "properties": {
+            "why": { "type": "string", "minLength": 1, "maxLength": 140 }
+          }
+        }
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,31}$",
+        "not": { "const": "dapp" }
+      }
+    }
+  }
+}

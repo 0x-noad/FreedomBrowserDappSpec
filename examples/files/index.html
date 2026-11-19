@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Files check</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <img src="./icon.png" alt="" width="32" height="32">
+    <div>
+      <h1>Files check</h1>
+      <p>Conformance fixture for <code>providers/files.md</code> §11. Press <b>Add</b> on the consent sheet, then <b>Run</b>.</p>
+    </div>
+  </header>
+
+  <section id="status" class="card">
+    <p id="detect">Checking for <code>window.dapp</code>…</p>
+    <div class="row">
+      <button id="connect" disabled>Request capabilities</button>
+      <button id="run" disabled>Run</button>
+      <button id="slow" disabled title="Writes a 65 MB file to check file_too_large; takes a while">Run slow checks</button>
+      <button id="relinquish" disabled>Relinquish</button>
+    </div>
+    <p id="summary" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <table id="results">
+      <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Manual checks</h2>
+    <ol class="manual">
+      <li>The consent sheet showed three Files rows, the <code>read-shared</code> row carried the disclosure sentence verbatim and the line <i>Only: image/*, application/json</i>, and no row had an always-allow toggle.</li>
+      <li>The header named the dapp key (not “Files check”) with the icon and name beneath it.</li>
+      <li><code>freedom://dapps</code> shows this dapp’s tile; its details page shows private usage of 512 MB, shared usage of the allowance, and three capability rows with enabled and revoke.</li>
+      <li><code>freedom://files</code> shows <code>shared-check.json</code> under this dapp’s key in the author column while the run holds it, sortable by author, date added and location.</li>
+      <li>Pausing a capability on the details page makes the matching calls fail with <code>4100 disabled</code>; resuming restores them without a sheet.</li>
+      <li>Locking the identity vault changes nothing on this page.</li>
+      <li>Removing the dapp asks about the bytes used, offers an export, and asks whether to remove its shared files with <i>keep</i> selected.</li>
+    </ol>
+  </section>
+
+  <script src="./harness.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
