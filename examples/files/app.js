@@ -14,7 +14,7 @@
 
   const WANT = [
     { id: 'files:private' },
-    { id: 'files:read-shared', scope: { types: ['image/*', 'application/json'] } },
+    { id: 'files:read-shared' },
     { id: 'files:write-shared' },
   ];
   const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
@@ -26,7 +26,7 @@
       assert(g.enabled, 'dapp should be enabled');
       const ids = g.capabilities.map((c) => c.id).sort();
       eq(JSON.stringify(ids), JSON.stringify(['files:private', 'files:read-shared', 'files:write-shared']), 'granted ids');
-      return `granted ${ids.length}; read-shared scope=${JSON.stringify(g.capabilities.find((c) => c.id === 'files:read-shared').scope)}`;
+      return `granted ${ids.length}; read-shared carries no scope: ${g.capabilities.find((c) => c.id === 'files:read-shared').scope === undefined}`;
     });
   };
 
@@ -135,9 +135,10 @@
         return `renamed; event kind=${e.kind}`;
       });
 
-      await test('files_list with prefix and types narrows; entries carry the full shape', async () => {
-        const l = await dapp.files.list({ root: 'private', prefix: 'doc', types: ['application/json'] });
+      await test('files_list with prefix, suffix and types narrows; entries carry the full shape', async () => {
+        const l = await dapp.files.list({ root: 'private', prefix: 'doc', suffix: '.json', types: ['application/json'] });
         assert(l.items.length >= 1, 'expected doc.json'); const e = l.items[0];
+        eq((await dapp.files.list({ root: 'private', suffix: '.nope' })).items.length, 0, 'suffix narrows');
         for (const k of ['name', 'size', 'type', 'cid', 'mtime', 'location']) assert(k in e, `missing ${k}`);
         return l.items.map((i) => i.name).join(', ');
       });
@@ -156,23 +157,45 @@
         return `author=${e.author}`;
       });
 
-      await test('files_list(shared) shows the file with author; a type outside scope is not listed', async () => {
-        const l = await dapp.files.list({ root: 'shared', prefix: 'shared-check' });
+      await test('files_list(shared) must name types: none, [] and */* are -32602 types_required', async () => {
+        await expectError(-32602, 'types_required', () => dapp.files.list({ root: 'shared', prefix: 'shared-check' }));
+        await expectError(-32602, 'types_required', () => dapp.files.list({ root: 'shared', types: [] }));
+        return expectError(-32602, 'types_required', () => dapp.files.list({ root: 'shared', types: ['*/*'] }));
+      });
+
+      await test('files_list(shared, types) shows the file with author; a family wildcard matches; another type is listed only when named', async () => {
+        const l = await dapp.files.list({ root: 'shared', prefix: 'shared-check', types: ['application/json'] });
         const mine = l.items.find((i) => i.name === 'shared-check.json');
         assert(mine, 'shared-check.json missing'); assert(mine.author, 'author missing');
-        await dapp.files.write({ root: 'shared', name: 'out-of-scope.txt', data: 'x', type: 'text/plain' });
-        const l2 = await dapp.files.list({ root: 'shared', prefix: 'out-of-scope' });
-        eq(l2.items.length, 0, 'text/plain is outside the read scope and must not be listed');
-        await dapp.files.delete({ root: 'shared', name: 'out-of-scope.txt' });
+        await dapp.files.write({ root: 'shared', name: 'other-type.txt', data: 'x', type: 'text/plain' });
+        const l2 = await dapp.files.list({ root: 'shared', prefix: 'other-type', types: ['application/*'] });
+        eq(l2.items.length, 0, 'text/plain is not application/*');
+        const l3 = await dapp.files.list({ root: 'shared', prefix: 'other-type', types: ['text/*'] });
+        eq(l3.items.length, 1, 'text/* names it');
+        const l4 = await dapp.files.list({ root: 'shared', prefix: 'other-type', types: ['text/plain'], author: mine.author });
+        eq(l4.items.length, 1, 'author narrows, does not widen');
+        await dapp.files.delete({ root: 'shared', name: 'other-type.txt' });
         return `author=${mine.author}`;
       });
 
-      await test('reading an out-of-scope shared file is -32602 not_found (N4)', async () => {
-        await dapp.files.write({ root: 'shared', name: 'hidden.txt', data: 'x', type: 'text/plain' });
-        const r = await expectError(-32602, 'not_found', () => dapp.files.read({ root: 'shared', name: 'hidden.txt' }));
-        await dapp.files.delete({ root: 'shared', name: 'hidden.txt' });
-        return r;
+      await test('a shared file of any type is readable by { author, name } under the broad grant', async () => {
+        await dapp.files.write({ root: 'shared', name: 'plain.txt', data: 'x', type: 'text/plain' });
+        const me = (await dapp.files.stat({ root: 'shared', name: 'plain.txt' })).author;
+        const b = await dapp.files.read({ root: 'shared', author: me, name: 'plain.txt' });
+        eq(b.size, 1, 'one byte');
+        await dapp.files.delete({ root: 'shared', name: 'plain.txt' });
+        return `author=${me}`;
       });
+
+      await test('files_list(shared, author: self) lists this dapp’s own shared files without types', async () => {
+        const l = await dapp.files.list({ root: 'shared', author: 'self' });
+        assert(l.items.some((i) => i.name === 'shared-check.json'), 'own file listed');
+        assert(l.items.every((i) => i.author === l.items[0].author), 'one author only');
+        return `${l.items.length} own file(s)`;
+      });
+
+      await test('files_subscribe(shared) without types is -32602 types_required', () =>
+        expectError(-32602, 'types_required', () => dapp.files.subscribe({ root: 'shared' })));
 
       await test('files_setPublication records a dapp-reported Swarm reference (verified: false)', async () => {
         const e = await dapp.files.setPublication({ root: 'shared', name: 'shared-check.json', provider: 'swarm', ref: 'a'.repeat(64) });
@@ -185,7 +208,7 @@
       await test('files_setPublication for a provider without publication records is -32602 unknown_provider', () =>
         expectError(-32602, 'unknown_provider', () => dapp.files.setPublication({ root: 'shared', name: 'shared-check.json', provider: 'radicle', ref: 'a'.repeat(64) })));
 
-      await test('shared subscribe delivers files:changed for an in-scope write', async () => {
+      await test('shared subscribe with types delivers files:changed for a matching write', async () => {
         await dapp.files.subscribe({ root: 'shared', types: ['application/json'] });
         const ev = once(dapp, 'files:changed', (e) => e.root === 'shared' && e.name === 'event.json');
         await dapp.files.writeJson({ root: 'shared', name: 'event.json', value: { ok: true } });

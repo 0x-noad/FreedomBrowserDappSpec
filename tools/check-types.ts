@@ -7,7 +7,7 @@ async function main() {
   if (!d?.isFreedomBrowser) return;
   const grant = await d.requestCapabilities({ capabilities: [
     { id: "files:private" },
-    { id: "files:read-shared", scope: { types: ["image/*"] } },
+    { id: "files:read-shared" },
   ]});
   const held: FreedomDapp.HeldCapability[] = grant.capabilities;
   const list = await d.request({ method: "files_list", params: { root: "shared", types: ["image/*"] } });
@@ -27,8 +27,14 @@ async function main() {
     schema: "freedom-manifest/2", name: "x", description: "y", icon: "./i.png", version: "1",
     capabilities: { files: { private: { why: "w" } }, swarm: { publish: { why: "p" } } },
   };
-  // @ts-expect-error scope not allowed on files:private
-  await d.requestCapabilities({ capabilities: [{ id: "files:private", scope: { types: [] } }] });
+  // @ts-expect-error no capability carries a scope in this revision (SPEC.md §6.3)
+  await d.requestCapabilities({ capabilities: [{ id: "files:read-shared", scope: { types: ["image/*"] } }] });
+  // @ts-expect-error a shared listing must name types (providers/files.md §4)
+  await d.files.list({ root: "shared" });
+  await d.files.list({ root: "private", suffix: ".state" });
+  await d.files.list({ root: "shared", author: "self" });
+  await d.files.subscribe({ root: "shared", author: "self", suffix: ".state" });
+  await d.files.subscribe({ root: "shared", types: ["image/*", "application/json"] });
   // @ts-expect-error unknown method
   await d.request({ method: "ipfs_pin", params: {} });
   // `pending` names the unanswered notice; `updatePending` is its "update" case (SPEC.md §7.4).

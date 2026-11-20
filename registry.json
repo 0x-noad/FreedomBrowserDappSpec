@@ -62,14 +62,14 @@
       "tier": "consent",
       "alwaysAllow": "not-applicable",
       "needsIdentityVault": false,
-      "scope": { "$ref": "schemas/providers/files.schema.json#/$defs/sharedReadScope" },
+      "scope": null,
       "consentString": "Read files in your shared folder",
       "mandatoryDisclosure": "Everything in your shared folder, including which dapp added each file, is visible to every dapp you allow to read it.",
       "methods": [
         "files_list", "files_read", "files_stat", "files_readJson",
         "files_subscribe", "files_unsubscribe"
       ],
-      "methodsNote": "On root \"shared\", narrowed to scope.",
+      "methodsNote": "On root \"shared\": every author's files; list and subscribe must name types (providers/files.md §4).",
       "events": ["files:changed"]
     },
     {

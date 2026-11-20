@@ -17,13 +17,12 @@
       }
     },
     "read-shared": {
-      "description": "files:read-shared — read files in the shared pool, narrowed to `scope` (consent tier).",
+      "description": "files:read-shared — read every author's files in the shared pool, by type-named queries (consent tier). No scope: providers/files.md §3, §4.",
       "type": "object",
       "additionalProperties": false,
       "required": ["why"],
       "properties": {
-        "why": { "$ref": "#/$defs/why" },
-        "scope": { "$ref": "#/$defs/sharedReadScope" }
+        "why": { "$ref": "#/$defs/why" }
       }
     },
     "write-shared": {
@@ -41,36 +40,6 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 140
-    },
-    "mimePattern": {
-      "description": "A MIME type (`image/png`) or a type-family pattern (`image/*`).",
-      "type": "string",
-      "pattern": "^[a-z0-9!#$&^_.+-]+/([a-z0-9!#$&^_.+-]+|\\*)$"
-    },
-    "author": {
-      "description": "A dapp key (providers/files.md §8.1, SPEC.md §3.2), or the literal `user` or `agent`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
-    },
-    "sharedReadScope": {
-      "description": "Scope of files:read-shared. An omitted field means all.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "types": {
-          "type": "array",
-          "maxItems": 32,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/mimePattern" }
-        },
-        "authors": {
-          "type": "array",
-          "maxItems": 32,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/author" }
-        }
-      }
     }
   }
 }

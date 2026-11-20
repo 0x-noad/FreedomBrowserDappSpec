@@ -244,8 +244,7 @@ sheet) and, where the capability has a scope (§6.3), `scope`:
   "capabilities": {
     "files": {
       "private":      { "why": "Stores your notes on this device." },
-      "read-shared":  { "why": "Imports images other dapps shared.",
-                        "scope": { "types": ["image/*"] } },
+      "read-shared":  { "why": "Imports images other dapps shared." },
       "write-shared": { "why": "Shares notes you export." }
     },
     "swarm": {
@@ -425,8 +424,8 @@ when the notice is raised and `updateApplied` when the user approves (§7.5);
 Inside an approved update: a capability **added** is shown and granted only
 if ticked; a capability **removed** has its grant and any always-allow
 revoked when the user accepts; a held capability whose scope **widened**
-(a `files:read-shared` row that drops a `types` filter, say) is a row to
-tick, unticked by default, and left unticked keeps the held scope; a scope
+is a row to tick, unticked by default, and left unticked keeps the held
+scope; a scope
 that **narrowed** is applied on accept, since the manifest bounds the grant
 (§6.4); a change to `why`, `name`, `description`,
 `icon`, `homepage`, `source`, `author` or `minSpecVersion` is shown in the
@@ -486,7 +485,7 @@ carries the union.
 | Tier | Meaning |
 |---|---|
 | `public` | no grant needed. Discovery and quota calls (`dapp_getProviders`, `dapp_getCapabilities`, `dapp_getManifest`, `dapp_getIdentityState`, `files_getQuota`, `dapp_fetch` on `web3://`). To a site without a grant record (§6.8) a public answer MUST be the same for every user of that host build: it describes the host, never the user's settings, data or node state (`dapp_getProviders` §7.4, `files_getQuota` in `providers/files.md` §8.2) |
-| `consent` | granted once on the consent sheet; thereafter silent. Reads and writes to the dapp's own storage, shared reads within scope |
+| `consent` | granted once on the consent sheet; thereafter silent. Reads and writes to the dapp's own storage, shared reads |
 | `per-call` | each use prompts, unless the user has set **always-allow** for that capability on the sheet or the details page. Anything that leaves the device, costs the user, or is irreversible: Swarm publish, feed writes, messaging sends |
 
 Some capabilities are **never** eligible for always-allow, whatever the
@@ -498,11 +497,14 @@ signing and transaction prompts are outside this specification altogether
 ### 6.3 Scopes
 
 A capability MAY carry a **scope**, an object defined by its provider
-document that narrows the grant (for example `files:read-shared` carries
-`{ types?: string[], authors?: string[] }`). The scope asked for in the
-manifest or the request becomes the scope of the grant. Results of calls
-under a scoped grant MUST be narrowed to the scope; nothing outside the
-scope exists from the dapp's point of view (§11, N4).
+document that narrows the grant. The scope asked for in the manifest or the
+request becomes the scope of the grant. Results of calls under a scoped
+grant MUST be narrowed to the scope; nothing outside the scope exists from
+the dapp's point of view (§11, N4). No capability in this revision carries
+a scope: `files:read-shared` is a broad grant over the whole shared pool,
+and what a dapp sees of it is bounded at call time by the type-named
+queries of `providers/files.md` §4, not by the grant. The mechanism stays
+for providers that need one.
 
 ### 6.4 Requesting
 
@@ -511,12 +513,10 @@ consent sheet. `capabilities` is an array of `{ id, scope? }`.
 
 - Every id MUST appear in the dapp's manifest, and a requested scope MUST
   be **compatible** with the manifest's: equal to it, or narrower, admitting
-  nothing the manifest's scope does not. For `files:read-shared` that means
-  every requested `types` entry is one of the manifest's entries or an exact
-  type under one of its wildcards, and requested `authors` are a subset of
-  the manifest's; a filter the request omits means the manifest's filter,
-  not everything. A provider document defines compatibility for any other
-  scope shape. Otherwise the call rejects `4100` with
+  nothing the manifest's scope does not; a field the request omits means
+  the manifest's value, not everything. The provider document that defines
+  a scope defines compatibility for it (none does in this revision, §6.3).
+  Otherwise the call rejects `4100` with
   `data.reason: "not_in_manifest"` and no sheet is shown: the manifest
   bounds what a dapp may ever ask.
 - Without a valid `/2` manifest, every call beyond the public tier rejects
@@ -568,9 +568,8 @@ The sheet renders in the Dapps pane (§10.2). It MUST show:
    (§6.10); `per-call` rows carry an
    **always-allow** toggle, off by default; a row whose provider the host
    does not have is shown ungrantable; the `files:read-shared` row MUST say
-   that the dapp will see every shared file, or every shared file in its
-   scope with the scope in plain words (`providers/files.md` §9.1), and
-   which dapp added it.
+   that the dapp will see every shared file and which dapp added it
+   (`providers/files.md` §9.1).
 3. **Footer.** **Add** and **Don't add**. These verbs differ on purpose
    from the **Reject** of the host's action approvals: the sheet adds a
    dapp to the browser, it does not approve an action. The update notice
@@ -1000,8 +999,8 @@ No OS trash is involved: the blobs would be unreadable there.
 ### 9.1 Shared pool access
 
 The user can grant and revoke Freedom Agent **read** access to the shared
-pool, with the same scope shape as a dapp's `files:read-shared` grant, and separately **add** access (files it adds carry
-author `agent`). Both are
+pool, a plain switch like a dapp's `files:read-shared` grant, and
+separately **add** access (files it adds carry author `agent`). Both are
 **off by default**, live in `freedom://files` beside the pool and in the
 Dapps pane's toggles as one record, survive restarts until revoked, and are
 exercised through three Agent tools (`dapp_files_list`, `dapp_files_read`,
@@ -1067,7 +1066,7 @@ for a dapp; nothing in the wallet UI depends on the dapp record.
    access state (off / read / read + add), and whether the identity vault
    is sealed or locked, with **Unlock**; links to `freedom://dapps` and
    `freedom://files`.
-3. **Toggles**: the Freedom Agent shared read (with scope) and add switches
+3. **Toggles**: the Freedom Agent shared read and add switches
    (§9.1); **Show the `d` indicator**; and a collapsed **Developer
    settings** group holding the developer setting (§3.6) with **Wipe dev
    data** while on. The group is the setting's only home (not the Settings

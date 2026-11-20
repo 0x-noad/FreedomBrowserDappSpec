@@ -7,8 +7,7 @@
   "capabilities": {
     "files": {
       "private":      { "why": "Writes and reads test files in this dapp's private folder." },
-      "read-shared":  { "why": "Lists shared files to check scope narrowing.",
-                        "scope": { "types": ["image/*", "application/json"] } },
+      "read-shared":  { "why": "Lists shared files by type to check the query rule." },
       "write-shared": { "why": "Adds a test file to the shared folder, then deletes it." }
     }
   },

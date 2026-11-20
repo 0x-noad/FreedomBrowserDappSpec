@@ -49,17 +49,12 @@ namespace FreedomDapp {
 
   /** A dapp key (SPEC.md §3.2), or the literal `user` or `agent`. */
   type Author = string;
+  /** In a query only: the calling dapp's own key, resolved by the host (providers/files.md §4). */
+  type Self = "self";
 
-  /** Scope of `files:read-shared`. An omitted field means all. providers/files.md §3. */
-  interface SharedReadScope {
-    types?: MimePattern[];
-    authors?: Author[];
-  }
 
-  /** Scope objects by capability; capabilities without a scope take none. */
-  interface ScopeByCapability {
-    "files:read-shared": SharedReadScope;
-  }
+  /** Scope objects by capability; no capability in this revision carries one (SPEC.md §6.3). */
+  interface ScopeByCapability {}
 
   type ScopeOf<C extends CapabilityId> = C extends keyof ScopeByCapability
     ? ScopeByCapability[C]
@@ -191,16 +186,23 @@ namespace FreedomDapp {
     name: string;
   }
 
-  interface ListParams {
-    root: Root;
+  /** At least one MIME pattern: an exact type or a one-family wildcard such as `image/*`; the all-types pattern is refused (providers/files.md §4). */
+  type Types = [MimePattern, ...MimePattern[]];
+
+  interface ListParamsBase {
     prefix?: string;
-    types?: MimePattern[];
-    /** Shared root only; omitted = every author the grant's scope allows. */
-    author?: Author;
+    /** Matches the end of `name` (".state"); narrows, never replaces `types`. */
+    suffix?: string;
     /** Default 200, max 1000. */
     limit?: number;
     cursor?: string;
   }
+
+  /** A shared listing must name types (providers/files.md §4, `types_required`) unless it is the dapp's own files (`author: "self"`); a private one need not. */
+  type ListParams =
+    | (ListParamsBase & { root: "private"; types?: MimePattern[] })
+    | (ListParamsBase & { root: "shared"; types: Types; /** Narrows further; omitted = every author. */ author?: Author | Self })
+    | (ListParamsBase & { root: "shared"; author: Self; types?: MimePattern[] });
 
   interface ListResult {
     items: FileEntry[];
@@ -272,12 +274,11 @@ namespace FreedomDapp {
     ref: string;
   }
 
-  interface SubscribeParams {
-    root: Root;
-    prefix?: string;
-    types?: MimePattern[];
-    author?: Author;
-  }
+  /** Same rule as `ListParams`: a shared subscription names types. */
+  type SubscribeParams =
+    | { root: "private"; prefix?: string; suffix?: string; types?: MimePattern[] }
+    | { root: "shared"; prefix?: string; suffix?: string; types: Types; author?: Author | Self }
+    | { root: "shared"; prefix?: string; suffix?: string; author: Self; types?: MimePattern[] };
 
   interface SubscribeResult {
     subscriptionId: string;
@@ -564,7 +565,7 @@ namespace FreedomDapp {
 
   type FilesManifestBlock = {
     private?: CapabilityRow;
-    "read-shared"?: CapabilityRow & { scope?: SharedReadScope };
+    "read-shared"?: CapabilityRow;
     "write-shared"?: CapabilityRow;
   };
 

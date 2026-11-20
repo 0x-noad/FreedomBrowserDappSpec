@@ -28,7 +28,7 @@ good = {
   "icon": "./icon.png", "version": "1.4.0",
   "capabilities": {
     "files": {"private": {"why": "Stores your notes on this device."},
-              "read-shared": {"why": "Imports images other dapps shared.", "scope": {"types": ["image/*"]}},
+              "read-shared": {"why": "Imports images other dapps shared."},
               "write-shared": {"why": "Shares notes you export."}},
     "swarm": {"publish": {"why": "Publishes a note as a page when you ask."}},
     "radicle": {"node": {"why": "Seeds repos."}, "signing": {"why": "Files issues."}}
@@ -61,8 +61,7 @@ cases_bad = {
   "swarm empty block": bad(capabilities={"swarm": {}}),
     "files empty block": bad(capabilities={"files": {}}),
   "files row without why": bad(capabilities={"files": {"private": {}}}),
-  "files scope bad mime": bad(capabilities={"files": {"read-shared": {"why": "x", "scope": {"types": ["image"]}}}}),
-  "files scope unknown key": bad(capabilities={"files": {"read-shared": {"why": "x", "scope": {"size": 1}}}}),
+  "files read-shared takes no scope": bad(capabilities={"files": {"read-shared": {"why": "x", "scope": {"types": ["image/*"]}}}}),
   "why too long": bad(capabilities={"files": {"private": {"why": "w"*141}}}),
   "icon absolute path": bad(icon="/icon.png"),
   "icon dotdot": bad(icon="../icon.png"),

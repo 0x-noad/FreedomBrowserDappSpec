@@ -54,19 +54,17 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
 | id | tier | scope shape | always-allow | consent-sheet string |
 |---|---|---|---|---|
 | `files:private` | `consent` | none | not applicable | "Keep files on this device that only this dapp can open" |
-| `files:read-shared` | `consent` | `{ types?: string[], authors?: string[] }` | not applicable | "Read files in your shared folder" |
+| `files:read-shared` | `consent` | none | not applicable | "Read files in your shared folder" |
 | `files:write-shared` | `consent` | none | not applicable | "Add files to your shared folder" |
 
 - **`files:private`** unlocks every method on `root: "private"`: the dapp's
   own folder, readable and writable by it alone.
 - **`files:read-shared`** unlocks reads (`list`, `read`, `stat`,
-  `readJson`, `subscribe`) on `root: "shared"`, narrowed to the scope.
-  `types` is a list of MIME patterns (`image/*` or exact types); `authors`
-  is a list of dapp keys, or the literal strings `user` and `agent`. An
-  omitted field in the manifest means all; in a `dapp_requestCapabilities`
-  request it means the manifest's filter, and a request is compatible only
-  when it is equal to or narrower than the manifest's scope (`SPEC.md`
-  §6.4). The row MUST carry this disclosure, verbatim:
+  `readJson`, `subscribe`) on `root: "shared"` of every author's files. The
+  grant is broad and carries no scope; what bounds a dapp is the query: a
+  shared listing or subscription MUST name the file types it wants (§4),
+  so no dapp can enumerate the whole pool in one call, which only
+  `freedom://files` does. The row MUST carry this disclosure, verbatim:
   *"Everything in your shared folder, including which dapp added each file,
   is visible to every dapp you allow to read it."*
 - **`files:write-shared`** unlocks writes on `root: "shared"`: `write`,
@@ -95,7 +93,7 @@ A `publication` is `{ ref: string, at: number, verified: boolean }` (§8.6);
 
 | method | params | returns | requires | user gesture | rate limit | timeout |
 |---|---|---|---|---|---|---|
-| `files_list` | `{ root, prefix?, types?, author?, limit?, cursor? }` | `{ items: entry[], nextCursor? }` | private: `files:private`; shared: `files:read-shared` | no | §4.1 | 60 s |
+| `files_list` | `{ root, prefix?, suffix?, types?, author?, limit?, cursor? }` | `{ items: entry[], nextCursor? }` | private: `files:private`; shared: `files:read-shared` | no | §4.1 | 60 s |
 | `files_read` | `{ root, author?, name }` | `{ bytes: Uint8Array, type, cid, size, mtime }` | as `list` | no | §4.1 | 60 s |
 | `files_stat` | `{ root, author?, name }` | `entry` | as `list` | no | §4.1 | 60 s |
 | `files_readJson` | `{ root, author?, name }` | `{ value, cid }` | as `list` | no | §4.1 | 60 s |
@@ -105,18 +103,26 @@ A `publication` is `{ ref: string, at: number, verified: boolean }` (§8.6);
 | `files_rename` | `{ root, from, to }` | `entry` | as `write` | no | §4.1 | 60 s |
 | `files_copy` | `{ from: { root, author?, name }, to: { root, name }, ifNoneMatch? }` | `entry` | read on `from.root`, write on `to.root` | no | §4.1 | 300 s |
 | `files_setPublication` | `{ root, name, provider, ref }` | `entry` | as `write` | no | §4.1 | 60 s |
-| `files_subscribe` | `{ root, prefix?, types?, author? }` | `{ subscriptionId }` | as `list` | no | 60 per document | 60 s |
+| `files_subscribe` | `{ root, prefix?, suffix?, types?, author? }` | `{ subscriptionId }` | as `list` | no | 60 per document | 60 s |
 | `files_unsubscribe` | `{ subscriptionId }` | `{}` | as `list` | no | §4.1 | 60 s |
 | `files_getQuota` | `{ root }` | §8.2 | `public` | no | §4.1 | 60 s |
 
 Method rules:
 
-- **`files_list`.** `prefix` matches the start of `name`. `types` are MIME
-  patterns as in a scope. `author` applies to `shared` only; omitted means
-  every author the grant's scope allows. `limit` defaults to 200 and is at
-  most 1 000; `cursor` follows `SPEC.md` §7.9. Results are always narrowed
-  to the grant's scope; a filter that matches nothing, or names an author
-  outside scope, returns an empty list.
+- **`files_list`.** `types` is a list of MIME patterns, each an exact type
+  (`image/png`) or a one-family wildcard (`image/*`); `*/*` is not a
+  pattern. On `root: "shared"` `types` is **required and non-empty**
+  (`types_required`) unless `author` is `"self"`: a dapp lists the pool by
+  type, never whole, but lists its **own** shared files freely, since that
+  reveals nothing about anyone else. On `private` `types` is optional.
+  `prefix` matches the start of `name`. `author` applies to `shared` only
+  and narrows further: a dapp key, `"user"`, `"agent"`, or `"self"`, which
+  the host resolves to the calling dapp's key; omitted means every author.
+  `limit` defaults to 200 and is at most 1 000; `cursor` follows
+  `SPEC.md` §7.9. `suffix` matches the end of `name` (`".state"`), for
+  files whose writer declared only a broad type; like `prefix` and `author`
+  it narrows a query and never stands in for `types`. A filter that matches
+  nothing returns an empty list.
 - **`files_read`.** Returns the bytes by structured clone (`SPEC.md` §7.7).
   Sugar: `dapp.files.read()` resolves a `Blob` whose `type` is the stored
   MIME type; `dapp.files.readText()` decodes UTF-8.
@@ -138,7 +144,7 @@ Method rules:
   `files:changed` with `kind: "renamed"`. Renaming over an existing own
   name fails `4409 exists`.
 - **`files_copy`.** Copies any file the dapp may read (its own private
-  files; any in-scope shared file, whichever author wrote it) to any root
+  files; any shared file, whichever author wrote it) to any root
   it may write (`private`; its own files on `shared`). Bytes never enter
   the page; the CID is preserved; the copy is attributed to the calling
   dapp whoever authored the source, which is no more than the read and the
@@ -151,8 +157,11 @@ Method rules:
   (`invalid_reference`). The record is accepted whether or not that
   provider is available (`SPEC.md` §12.4): the dapp holds the reference.
 - **`files_subscribe`.** Delivers `files:changed` (§5) for files matching
-  the filters and the grant's scope until `files_unsubscribe` or the
-  document ends. At most 60 live subscriptions per document.
+  the filters until `files_unsubscribe` or the document ends. On
+  `root: "shared"` `types` is required and non-empty as for `list`, with
+  the same `author: "self"` exemption (`types_required`), so change events
+  are no listing by another route.
+  At most 60 live subscriptions per document.
 
 ### 4.1 Rate limits
 
@@ -164,7 +173,7 @@ source bytes). Over budget rejects `-32005` with `data.retryAfterMs`.
 
 | event | payload | needs |
 |---|---|---|
-| `files:changed` | `{ root, author, name, kind, cid, from?, publication? }` | `files:private` for `root: "private"`; `files:read-shared` (scope-narrowed) for `root: "shared"` |
+| `files:changed` | `{ root, author, name, kind, cid, from?, publication? }` | `files:private` for `root: "private"`; `files:read-shared` for `root: "shared"`, for files matching the subscription's `types` |
 
 `kind` is one of `created`, `modified`, `deleted`, `renamed` (`from` is the
 old name), `published` (`publication` is the new record with its
@@ -195,18 +204,7 @@ unlock. Dapps refresh on `identityChanged` (`SPEC.md` §6.11).
     },
     "read-shared": {
       "type": "object", "additionalProperties": false, "required": ["why"],
-      "properties": {
-        "why": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "scope": {
-          "type": "object", "additionalProperties": false,
-          "properties": {
-            "types":   { "type": "array", "maxItems": 32, "uniqueItems": true,
-                         "items": { "type": "string", "pattern": "^[a-z0-9!#$&^_.+-]+/([a-z0-9!#$&^_.+-]+|\\*)$" } },
-            "authors": { "type": "array", "maxItems": 32, "uniqueItems": true,
-                         "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
-          }
-        }
-      }
+      "properties": { "why": { "type": "string", "minLength": 1, "maxLength": 140 } }
     },
     "write-shared": {
       "type": "object", "additionalProperties": false, "required": ["why"],
@@ -221,8 +219,7 @@ Example:
 ```json
 "files": {
   "private":      { "why": "Keeps your drafts on this device." },
-  "read-shared":  { "why": "Imports images other dapps shared.",
-                    "scope": { "types": ["image/*"] } },
+  "read-shared":  { "why": "Imports images other dapps shared." },
   "write-shared": { "why": "Shares the pages you export." }
 }
 ```
@@ -231,7 +228,7 @@ Example:
 
 | code | reason | when |
 |---|---|---|
-| `4100` | `unauthorized` | no grant for the root the call names (never raised for an out-of-scope file: that is `not_found`, N4) |
+| `4100` | `unauthorized` | no grant for the root the call names |
 | `4100` | `locked` | a call naming `root: "private"` (any root while sealed) other than `files_getQuota`, while the identity vault is locked, after the unlock prompt was dismissed, its dismissal is cached, or the wait ended (`SPEC.md` §6.11) |
 | `4300` | `dapp_quota` | the private 512 MB, or the dapp's shared allowance, would be exceeded (on `shared`, after the storage prompt of §8.8 was declined or could not be shown) |
 | `4300` | `pool_quota` | the shared pool cap would be exceeded |
@@ -244,7 +241,8 @@ Example:
 | `-32602` | `invalid_name` | `name` breaks §8.3 |
 | `-32602` | `invalid_type` | `type` is not a MIME type |
 | `-32602` | `type_mismatch` | declared `type` contradicts the magic bytes (§8.4) |
-| `-32602` | `not_found` | no such file (own file on `private`; any in-scope file on `shared`) |
+| `-32602` | `not_found` | no such file (own file on `private`; any file on `shared`) |
+| `-32602` | `types_required` | `list` or `subscribe` on `shared` without a non-empty `types`, or with `*/*`, when `author` is not `"self"` |
 | `-32602` | `unknown_provider` | `provider` in `setPublication` declares no publication record |
 | `-32602` | `invalid_reference` | `ref` in `setPublication` is not valid for `provider` |
 | `-32602` | `invalid_cursor`, `invalid_subscription` | bad `cursor` or `subscriptionId` |
@@ -265,7 +263,7 @@ Conventions differing from `SPEC.md` §7: none.
 
 | | `private` | `shared` |
 |---|---|---|
-| who reads | the owning dapp and the user | every dapp holding `files:read-shared`, within scope; the user; Freedom Agent under its grant (§9) |
+| who reads | the owning dapp and the user | every dapp holding `files:read-shared`, by type-named queries; the user; Freedom Agent under its grant (§9) |
 | who writes | the owning dapp and the user | each dapp holding `files:write-shared`, own files only; the user; Freedom Agent under its add grant |
 | intended for | the dapp's **sensitive data only** | bulk data and anything meant for other dapps |
 | quota | **512 MB per dapp, fixed** (not user-adjustable, not requestable) | **per-dapp allowance, default 1 GB**, set on the dapp's details page (presets 1 GB, 2 GB, 4 GB, 8 GB), inside a **pool cap, default 8 GB**, set in the Dapps pane (presets 4 GB, 8 GB, 16 GB, 32 GB); an allowance never exceeds the cap; neither is requestable by a dapp |
@@ -329,8 +327,8 @@ Every file carries a MIME `type` the writer declared. For types the host
 recognises by magic bytes (images, audio, video, PDF, archives, fonts) a
 declaration that contradicts the bytes is rejected with `type_mismatch`;
 text and unrecognised types are stored as declared. The same recogniser
-serves both roots, which is what makes a `types` scope on shared reads safe
-against relabelling.
+serves both roots, which is what makes a type-named shared listing
+reliable against relabelling.
 
 ### 8.5 Content identifiers
 
@@ -398,19 +396,28 @@ order).
 
 **The storage prompt.** A `shared` write that would exceed the dapp's
 allowance does not fail at once when raising the allowance would let it
-through: when the allowance is below the pool cap and the write fits the
-pool, the host shows a prompt in the Dapps pane (`SPEC.md` §10.2), "<name>
-needs more storage", with the allowance, the usage, the size of the write
-and the presets above the current allowance up to the cap. One tap sets
+through. It applies to every call that adds bytes under the dapp's author
+on `shared`: `write`, `writeJson` and `copy` to `shared`; `rename` and
+`setPublication` add none and never prompt. When the allowance is below
+the pool cap and the write fits the pool, the host shows a prompt in the
+Dapps pane (`SPEC.md` §10.2), "<name> needs more storage", with the
+allowance, the usage, the size of the write and the figures the user may
+pick: the presets above the current allowance that are enough for the
+write, and the cap itself when it is not a preset. When no figure under
+the cap is enough there is no prompt, just `4300 dapp_quota`. One tap sets
 the allowance and the write proceeds, returning its normal result; the
-call waits as any prompting call does (`SPEC.md` §7.11, 300 s). **Not
-now**, the timeout or a closed sidebar rejects the write `4300 dapp_quota`
-exactly as if nothing had been asked, and the decline is cached for the
-document like a consent decline (`SPEC.md` §6.6): further over-allowance
-writes reject at once until reload. No prompt when the write would also
-exceed the pool cap (the cap is set in the pane), on `private`, under
-Freedom Agent custody (`SPEC.md` §9.2), or on a call without a user
-gesture in the last 60 s. While the identity vault is locked the prompt
+call waits as any prompting call does (`SPEC.md` §7.11, 300 s). The prompt
+is bound to its tab like a sheet (`SPEC.md` §6.7): raised from a background
+tab, or while the sidebar is closed, it waits, recallable from the `d`
+indicator, until its tab is fronted and the sidebar open or the wait ends.
+**Not now**, the end of the wait, or closing the sidebar while the prompt
+is on screen rejects the write `4300 dapp_quota` exactly as if nothing had
+been asked, and the decline is cached for the document like a consent
+decline (`SPEC.md` §6.6): further over-allowance writes reject at once
+until reload. No prompt when the write would also exceed the pool cap (the
+cap is set in the pane), on `private`, under Freedom Agent custody
+(`SPEC.md` §9.2), or on a call without a user gesture in the last 60 s.
+While the identity vault is locked the prompt
 is shown as usual and its accept raises a figure, so the unlock prompt
 follows it (`SPEC.md` §6.11); a dismissed unlock is the same `4300
 dapp_quota` as **Not now**. The dapp needs no new call: it wraps the write
@@ -437,18 +444,12 @@ removed raise `files:changed` deletions for their readers.
 
 ### 9.1 Consent sheet
 
-Three rows, with the strings in §3, and the disclosure sentence of §3 under
-the `files:read-shared` row verbatim. When the manifest narrows that row's
-scope, the row's own words say so in plain language rather than in MIME
-syntax: "Read PNG, JPEG and MP3 files in your shared folder" for
-`types: ["image/png", "image/jpeg", "audio/mpeg"]`, "Read images in your
-shared folder" for `image/*`, "Read files from Gallery in your shared
-folder" for an `authors` entry that names an added dapp (its name, with
-the key on hover or beneath), the key itself for one that is not added,
-and "your own files" / "Freedom Agent's files" for `user` / `agent`. A
-type the host has no common name for is shown as written. The host MUST
-render the scope; the plain words are RECOMMENDED. The `why` sits beneath
-as always. No Files row has an always-allow toggle.
+Three rows, with the strings in §3. The `files:read-shared` row carries the
+disclosure sentence of §3 beneath its words, verbatim: *"Everything in your
+shared folder, including which dapp added each file, is visible to every dapp
+you allow to read it."* The row has no scope to show: the grant is the whole
+pool, and the host's wording MUST NOT suggest otherwise. The `why` sits
+beneath as always. No Files row has an always-allow toggle.
 
 ### 9.2 Details page
 
@@ -474,10 +475,10 @@ publication column reads the records of §8.6, which other providers write.
 The user can give Freedom Agent access to the shared pool. Nothing here
 touches a private folder.
 
-- **Read.** A switch, **off by default**, with the same scope shape as
-  `files:read-shared` (`types`, `authors`; default: everything). While on,
-  the Agent may list and read in-scope shared files through the tools
-  below. The grant survives restarts until the user switches it off.
+- **Read.** A switch, **off by default**. While on, the Agent may list
+  shared files by type and read them through the tools below, under the
+  same type-named rule as a dapp (§4): only `freedom://files` lists the
+  whole pool. The grant survives restarts until the user switches it off.
 - **Add.** A separate switch, **off by default**. While on, the Agent may
   add files to the pool through the tool below; the Agent's approval
   barrier shows the file's name, type and size before the add happens.
@@ -490,7 +491,7 @@ touches a private folder.
 
   | tool | params | returns | needs |
   |---|---|---|---|
-  | `dapp_files_list` | `{ prefix?, types?, author?, limit?, cursor? }` | as `files_list` on `shared`, narrowed to the read scope | read |
+  | `dapp_files_list` | `{ prefix?, suffix?, types, author?, limit?, cursor? }` | as `files_list` on `shared`; `types` required and non-empty (`types_required` as a tool error) | read |
   | `dapp_files_read` | `{ author, name }` | `entry` plus `text` (UTF-8) for `text/*` and JSON types, else the bytes as an attachment in the Agent's attachment store (its per-file cap applies) | read |
   | `dapp_files_add` | `{ name, type, text? \| attachment? }` | `entry` | add |
 
@@ -504,7 +505,7 @@ touches a private folder.
 - **Visibility.** An Agent read raises no `files:changed`, appears in no
   listing and moves no counter: dapps cannot detect it and are told to
   treat the shared pool as published. An Agent add is an ordinary change
-  for readers in scope.
+  for readers whose subscription names its type.
 - **Log.** Every Agent read and add is logged for the user in the Agent's
   own log (`SPEC.md` §6.12; shown in the explorer, `SPEC.md` §10.5) with
   file, time and the
@@ -516,8 +517,10 @@ touches a private folder.
    MUST apply it as the private folder's namespace and as `author` on every
    shared write.
 2. The host MUST keep the private folder readable only by its own dapp key
-   and the user, and MUST narrow every shared read to the grant's scope
-   before any result or event leaves the main process.
+   and the user, and MUST reject a shared `list` or `subscribe`, from a
+   dapp or from Freedom Agent, that names no types and is not the dapp's
+   own `author: "self"` query (`types_required`, §4)
+   before anything leaves the main process.
 3. The host MUST encrypt both roots at rest as `SPEC.md` §8.1 says, with
    hashed on-disk names, MUST derive both keys at the first unlock and
    gate every call while sealed, MUST drop the private key on lock and
@@ -557,11 +560,15 @@ a sidecar index per root, the two keys handed over by the vault service
 ## 11. Security considerations and conformance checklist
 
 - **Cross-dapp disclosure.** The shared pool is the one place a dapp learns
-  of other dapps. The consent row says so verbatim, authorship is always
-  on, and `types`/`authors` scopes narrow what a given dapp sees. A dapp
-  without `files:read-shared` learns nothing (N3).
-- **Relabelling.** A dapp cannot smuggle a file past another dapp's `types`
-  scope by declaring a false type (§8.4).
+  of other dapps. The grant is broad and the consent row says so verbatim;
+  authorship is always on. The type-named query rule (§4) is friction
+  against indiscriminate scraping and a nudge towards relevance, not
+  confidentiality: a dapp that holds the grant can enumerate types one by
+  one and can read any shared file it knows by `{ author, name }`. Nothing
+  a dapp wants kept from other dapps belongs in the pool. A dapp without
+  `files:read-shared` learns nothing (N3).
+- **Relabelling.** A dapp cannot keep a file out of another dapp's
+  type-named listing by declaring a false type (§8.4).
 - **Hostile writes.** No dapp can alter or delete another author's file:
   the write methods take no `author`, so every write addresses the
   caller's own bucket and another author's name is simply not there
@@ -575,9 +582,9 @@ a sidecar index per root, the two keys handed over by the vault service
 - **Agent.** The Agent is a reader and adder of `shared` only under
   explicit off-by-default switches, never of a private folder, undetectably
   to dapps, and always logged (N3a).
-- **Oracles.** `not_found`, empty lists and out-of-scope filters are
-  indistinguishable from the dapp's side (N4). No Files call can tell a
-  dapp whether another dapp exists except through in-scope shared files.
+- **Oracles.** `not_found` and an empty list are the only answers about
+  what is absent (N4). No Files call can tell a dapp whether another dapp
+  exists except through shared files.
 - **Core rules bearing most:** N1, N3, N3a, N4, N8, N9, N11.
 
 Conformance checklist (`examples/files/`):
@@ -585,9 +592,12 @@ Conformance checklist (`examples/files/`):
 - [ ] every method behaves as §4 for a dapp holding the matching grant;
 - [ ] every method rejects `4100 unauthorized` without it, and
       `files_getQuota` works without any grant;
-- [ ] a `types` scope and an `authors` scope each narrow `list`, `read`,
-      `stat`, `readJson` and `files:changed`, and an out-of-scope read is
-      `not_found`;
+- [ ] a shared `list` or `subscribe` without `types`, with an empty list or
+      with `*/*` is `types_required`, except with `author: "self"`, which
+      lists the dapp's own shared files whole; `image/*` matches every
+      image type;
+      `author` narrows a type query; a shared `read` of any author's file
+      by `{ author, name }` succeeds under the grant;
 - [ ] `ifMatch` and `ifNoneMatch` produce `4409 conflict` and `4409 exists`;
 - [ ] the storage presets appear in the Dapps pane (4/8/16/32 GB) and on the
       details page (1/2/4/8 GB) and take effect on the next write;

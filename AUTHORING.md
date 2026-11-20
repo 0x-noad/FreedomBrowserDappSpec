@@ -52,8 +52,7 @@ checked; `/.well-known/` is not.
   "capabilities": {
     "files": {
       "private":      { "why": "Keeps your notes on this device." },
-      "read-shared":  { "why": "Imports images other dapps shared.",
-                        "scope": { "types": ["image/*"] } },
+      "read-shared":  { "why": "Imports images other dapps shared." },
       "write-shared": { "why": "Shares the notes you export." }
     },
     "swarm": {
@@ -151,7 +150,7 @@ swap it, so keep the tool, not the maths, in your build.
 | id | tier | what it unlocks |
 |---|---|---|
 | `files:private` | consent | read and write your private folder (512 MB, 64 MB per file, 1 000 files; for sensitive data) |
-| `files:read-shared` | consent | read the shared folder, narrowed by `scope.types` and `scope.authors` |
+| `files:read-shared` | consent | read every file in the shared folder, listing it by file type (never all at once) |
 | `files:write-shared` | consent | add, overwrite, delete and rename **your own** files in the shared folder (default 1 GB of an 8 GB pool; the user can raise either, to 8 GB and 32 GB; 512 MB per file) |
 | `swarm:publish`, `swarm:feeds`, `swarm:signing`, `swarm:messaging` | per-call | the shipped `window.swarm` tiers; each use prompts unless the user set always-allow |
 | `radicle:node`, `radicle:signing` | per-call | the shipped `window.radicle` tiers |
@@ -196,7 +195,7 @@ Ask for what you need when you need it, behind a button if you like:
 const grant = await window.dapp.requestCapabilities({
   capabilities: [
     { id: 'files:private' },
-    { id: 'files:read-shared', scope: { types: ['image/*'] } },
+    { id: 'files:read-shared' },
   ],
 });
 ```
@@ -214,13 +213,18 @@ const missing = wanted.filter((w) => !held.capabilities.some((h) => h.id === w.i
 if (missing.length) await window.dapp.requestCapabilities({ capabilities: wanted });
 ```
 
-Request **exactly the scope your manifest declares**. Freedom compares what
-you ask for with what you hold; any difference, wider or narrower, shows
-the full sheet again, and a scope wider than the manifest's is refused
-(`4100 not_in_manifest`; SPEC.md §6.4 defines compatible). A scope that
-changes per session (today's collaborator in `authors`, say) means a
-sheet per session. Narrow at call time instead: `files.list({ types,
-author })` filters within your grant without touching it.
+**The shared folder is read by type.** The read grant covers every file in the
+user's shared folder, whoever added it, and the consent row says so. What
+bounds you is the query: a shared `list` or `subscribe` must name the MIME
+types you want, exact (`image/png`) or one family at a time (`image/*`);
+asking for nothing, or for `*/*`, is `-32602 types_required`. Only the user's
+own `freedom://files` lists everything; your **own** shared files are the
+exception: `files.list({ root: 'shared', author: 'self' })` lists them whole.
+Add `author` to narrow a type query to one dapp's files, and `prefix` or
+`suffix` to narrow by name. Give your own file kinds a specific type
+(`application/vnd.myapp.state+json`) so they list in one call; reach for
+`suffix: '.state'` under a broad type only for files whose writer did not. A
+file you already know by `{ author, name }` reads directly, whatever its type.
 
 - A decline is `4001` and is cached for the document: do not re-prompt in a
   loop; tell the user they can reopen the sheet from the `d` in the address
@@ -351,8 +355,8 @@ the EIP-1193 ones plus three:
 | `-32005` | rate limited | `retryAfterMs` |
 | `-32603` | internal | `timeout`, `disk_full`, `io_error` |
 
-`not_found` is what you get for a file outside your shared-read scope too;
-Freedom never tells a dapp whether something it cannot see exists.
+Freedom never tells a dapp whether something it cannot see exists:
+`not_found` and an empty list are the only answers about what is absent.
 
 ## 5. Developing locally
 
