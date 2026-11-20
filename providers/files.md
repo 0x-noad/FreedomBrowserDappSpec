@@ -373,8 +373,9 @@ Each root is encrypted under its own key derived from the identity vault
 hashed on-disk names and a sidecar index per root, encrypted under the same
 key, of names, CIDs, types, sizes, authors and `publications`. The private key
 leaves memory when the vault locks, so private folders and their indexes are
-unreadable until unlock; plain per-folder byte and file counters keep
-`files_getQuota` and the explorer's usage figures working. The shared key
+unreadable until unlock; plain per-folder byte and file counters (keyed by
+dapp key, figures only, never names) keep `files_getQuota` and the
+explorer's usage figures working. The shared key
 stays once derived; before the first unlock of a session neither key exists in
 memory (`SPEC.md` §6.11, sealed). The data is **not** editable in the
 operating system's file manager; the user's way in and out is
@@ -438,7 +439,9 @@ showing their count and bytes, **keep** being the default because other
 dapps may be reading them. On OK the private folder and its index entries
 are unlinked. Shared files that are kept stay attributed to the removed
 dapp key and remain deletable in `freedom://files`; shared files that are
-removed raise `files:changed` deletions for their readers.
+removed raise `files:changed` deletions for their readers. A root the host
+cannot read at that moment is wiped as `SPEC.md` §8.4 says: blobs removed
+now, index entries dropped when that index next loads, no per-file events.
 
 ## 9. Surfaces
 

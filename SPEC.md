@@ -521,16 +521,16 @@ consent sheet. `capabilities` is an array of `{ id, scope? }`.
   bounds what a dapp may ever ask.
 - Without a valid `/2` manifest, every call beyond the public tier rejects
   `4100` with `data.reason: "no_manifest"`.
-- While no identity vault exists (§6.11), `dapp_requestCapabilities` opens
-  the pane on the **create identity** step instead of the sheet (§10.2)
-  and waits as a sheet does (300 s, §7.11); when onboarding completes the
-  sheet proper follows. If the step is dismissed or the wait ends, the call
-  rejects `4100` with `data.reason: "no_identity"` and the dismissal is
-  cached for the document like a decline (§6.6) until an identity exists.
-  No other call reports this reason: without a vault there is no record
-  and no grant, so every other capability-gated call rejects
-  `unauthorized` as always, and a site without a record learns nothing
-  about the user (§6.2, N3).
+- While no identity vault exists (§6.11), `dapp_requestCapabilities` opens the
+  pane on the **create identity** step instead of the sheet (§10.2) and waits
+  as a sheet does (300 s, §7.11); when onboarding completes the sheet proper
+  follows, with its own 300 s. If the step is dismissed or the wait ends, the
+  call rejects `4100` with `data.reason: "no_identity"` and the dismissal is
+  cached for the document like a decline (§6.6) until an identity exists. No
+  other call reports this reason: without a vault there is no record and no
+  grant, so every other capability-gated call rejects `unauthorized` as
+  always, and a site without a record learns nothing about the user (§6.2,
+  N3).
 - A capability-gated call made before any grant MUST reject `4100` with
   `data.reason: "unauthorized"`; it never prompts. The dapp controls the
   moment by calling `dapp_requestCapabilities` (or the user by pressing
@@ -680,8 +680,9 @@ Once unsealed, the lock never gates the **shared pool** (the pool is
 reads continue), nor any action that **narrows**: untick, revoke,
 always-allow off, **Pause**, **Delete**, **Remove dapp**, Agent switches
 off, the developer setting off, **Wipe dev data**. Reads of grants,
-manifests, usage figures and logs, and **Clear** on a log, are never gated.
-Any control not named here is not gated.
+manifests and usage figures, and **Clear** on a log, are never gated; the
+logs themselves are readable once unsealed (§6.12). Any control not named
+here is not gated.
 
 **Mechanism.** The unlock prompt is shown only for a call that would
 otherwise proceed: the other `4100` conditions are checked first, in the
@@ -698,9 +699,12 @@ its tab is fronted meanwhile, then rejects `locked`. A gated surface action
 shows the prompt when pressed; an unlock prompt raised by a call while a
 sheet is open waits behind the sheet (§6.7). A subscription on a private
 root survives a lock: nothing is delivered while locked and nothing is
-replayed on unlock; a dapp refreshes on `identityChanged`. Dapp calls never
-reset the vault's idle timer: only the user's own acts do, so a dapp cannot
-hold the vault open by polling. Added dapps receive `identityChanged`
+replayed on unlock; a dapp refreshes on `identityChanged`. A call made
+under a consent-tier grant or under always-allow never resets the vault's
+idle timer, so a dapp cannot hold the vault open by polling or by writing;
+a per-call write the user approved on its prompt does, as any user act. This
+binds the shipped providers' signing paths too (`providers/swarm.md` §10).
+Added dapps receive `identityChanged`
 (§7.5) on every change of `exists`, `locked` or `sealed` and may read the
 state with `dapp_getIdentityState` (§7.4).
 
@@ -725,7 +729,12 @@ under always-allow, with time, action, target and size. Reads are not logged,
 except Freedom Agent reads of the shared pool, which go to the Agent's own log
 below. The log is a ring buffer of 1 000 entries or 30 days, whichever is
 smaller, is shown on the details page with a **Clear** action, and is never
-readable by pages.
+readable by pages. Both logs are stored under the **shared** data key
+(§8.1): readable once the vault is unsealed, through every later lock, and
+unreadable while sealed, when the details page and `freedom://files` show
+**Unlock** in their place (§10.7). Entries name files by name, so a private
+file's name is readable in the log after the first unlock of a session even
+while the folder itself is locked (§8.1).
 
 The host keeps a second log of the same shape and limits for **Freedom
 Agent**, which is not a dapp and has no details page: every Agent read and
@@ -962,7 +971,12 @@ providers' own stores are unchanged (§1.4). On-disk names MUST be hashed,
 so the data is opaque outside the host and the OS filesystem's case rules
 never apply. A copied profile folder or a stolen disk yields ciphertext
 without the recovery phrase; a running, unlocked browser is guarded by the
-lock for private data and by the OS session lock for the rest (§11).
+lock for private data and by the OS session lock for the rest (§11). Two
+things sit beside the encrypted roots: the per-folder counters, which name
+folders by dapp key and carry figures only, never file names; and the two
+activity logs (§6.12), stored under the shared key, whose entries do name
+private files, so a private name is readable there after the first unlock
+of a session even while the folder is locked.
 
 ### 8.2 Quota interface
 
@@ -987,7 +1001,10 @@ remove every shared file the dapp authored, showing their count and bytes, with
 **keep** as the default. On OK the host unlinks the dapp's private data,
 its grants in every store (for a shipped provider, as that provider's own
 disconnect does), its wallet connection (§6.14), its record and its
-activity log. What a provider keeps
+activity log. A root the host cannot read at that moment (private while
+locked, either while sealed) is wiped by removing its blobs now and
+dropping its index entries when that index next loads; no per-file events
+are raised (`providers/files.md` §5). What a provider keeps
 after removal (for example Swarm's publisher identity, or Radicle seeds the
 dapp asked for) is stated in that provider's document, §8 "On remove", and
 a provider document MAY add one question of its own to this confirm (for
@@ -1056,7 +1073,9 @@ At rest, top to bottom:
    of: not a dapp ("This site is not a dapp"); dapp, not added (key, name,
    **Add**); connected (key, name, version, one line per provider with its
    capabilities, buttons **Details**, **Pause** / **Resume**, **Files**);
-   paused; update pending (opens the notice); prompt waiting. The Wallet
+   paused; update pending (opens the notice); prompt waiting; create
+   identity (§6.11), which takes precedence over "prompt waiting" while a
+   request waits on it, since the request is what opened it. The Wallet
 tab's own status rows (wallet connection, Swarm, auto-pay) are unchanged
 for a dapp; nothing in the wallet UI depends on the dapp record.
 2. **Summary**: added dapps, disk used (private total; shared used of the
@@ -1191,7 +1210,10 @@ have, for `/1` sites and non-dapp origins (in Freedom v0.8.8: the Swarm
 permission screen reached from the Wallet tab's Swarm row by **Manage**;
 Radicle has none, and there is no Settings-page list of either). Opened for
 an added dapp, such a screen shows the dapp's name and **Open dapp
-details** in place of its inline toggles.
+details** in place of its inline toggles. The host's own identity screens
+gain one sentence: the delete-vault confirm says that dapp data stays on
+disk and becomes readable again only by importing the same recovery phrase
+(§6.11).
 
 ### 10.7 Locked identity
 
@@ -1201,8 +1223,11 @@ every widening control (§6.11) shows the unlock prompt when pressed. In
 `freedom://files` the shared view is unaffected and each private folder
 shows its usage with **Unlock** in place of its contents and **Export**,
 since the private key is not in memory (§8.1); while the vault is sealed
-the shared view does the same. The removal confirm's export
-offer prompts for unlock first (§8.4). Before any vault exists the surfaces
+the shared view does the same, and the activity logs on the details page
+and in `freedom://files` show **Unlock** in their place (§6.12). The
+removal confirm's export offer prompts for unlock first (§8.4). A dapp
+whose private folder cannot be opened is still removable (§8.4). Before any
+vault exists the surfaces
 list nothing, since nothing can have been added, and the pane offers
 **Create identity** (§10.2).
 
@@ -1210,7 +1235,9 @@ list nothing, since nothing can have been added, and the pane offers
 
 `dev:` dapps appear under their own **Development** heading with a visible
 tag on every surface, are excluded from summary counts and storage figures,
-and are wiped together by **Wipe dev data** after a confirm.
+and are wiped together by **Wipe dev data** after a confirm. A root the
+host cannot read at that moment is wiped as §8.4 says: blobs now, index
+entries when it next loads.
 
 ## 11. Security and privacy rules
 

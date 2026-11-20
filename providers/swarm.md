@@ -315,6 +315,13 @@ The explorer's four slots (`SPEC.md` §10.5):
    the row is paused (`4100 disabled`).
 10. The host MUST NOT mark `swarm:publish` or any Swarm row as never
     auto-approvable; the shipped always-allow rules stand.
+11. The host MUST NOT reset the identity vault's idle timer after a feed or
+    SOC write that ran under always-allow (`autoApprove.feeds`,
+    `autoApprove.signing`); it MAY reset it after a write the user approved
+    on its prompt (`SPEC.md` §6.11). *Informative:* upstream v0.8.8 resets
+    the timer after every signed Swarm operation in
+    `swarm-provider-ipc.js`, so a site with auto-approve on could hold the
+    vault open by writing; this closes that.
 
 *Informative.* Upstream modules: `src/main/swarm/swarm-provider-ipc.js`
 (authority), `permission-manifests.js` (generalised by the core fetcher),
