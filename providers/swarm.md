@@ -42,6 +42,10 @@ to `window.dapp`, and from the upstream document where it applies to
   `swarm:publish` and `swarm:messaging` do not.
 - **Offline.** `swarm_listFeeds` and `swarm_getCapabilities` work without
   the node; everything else needs it and fails fast with `4900`.
+- **Other providers.** `files`, optional, by the annotation pattern of
+  `SPEC.md` §12.5: a publish of a stored file's bytes writes a Swarm
+  publication record on the file (§9.4, §10). Without Files nothing is
+  recorded and Swarm is unaffected.
 
 ## 3. Capabilities
 
@@ -176,7 +180,7 @@ As shipped. Reason strings under the core codes:
 | `4100` | `not_connected` | a non-public method without the connection grant |
 | `4100` | `feed_not_granted`, `messaging_not_granted` | a feeds/signing or messaging method without that grant |
 | `4100` | `tag_ownership_mismatch` | `swarm_getUploadStatus` for another key's tag, or one already `done` |
-| `4100` | `disabled`, `update_pending`, `agent_custody` | the core's rules (`SPEC.md` §6.9, §5.4, §9.2) applied to a Swarm call |
+| `4100` | `disabled`, `update_pending`, `agent_custody`, `locked` | the core's rules (`SPEC.md` §6.9, §5.4, §9.2, §6.11) applied to a Swarm call; `locked` when a feeds or signing write's unlock prompt is dismissed |
 | `4900` | `node-stopped`, `node-not-ready`, `ultra-light-mode`, `no-usable-stamps` | the node cannot serve the call; on a write these also open Freedom's publish setup |
 | `4900` | `subscription_cancelled`, `cancelled`, `establish_timeout`, `node_subscription_limit` | a subscription was torn down, did not establish in 30 s, or the node's pool is full |
 | `4900` | (no `data`) | the provider is disabled in Settings |
@@ -192,7 +196,8 @@ As shipped. Reason strings under the core codes:
 
 **Legacy exceptions (as shipped, kept; `SPEC.md` §7.13 allows them for a
 provider documented as shipped):** reads return `{ data, encoding:
-'base64' }` rather than `Uint8Array` (§7.7); rate limiting is `-32602
+'base64' }` rather than `Uint8Array` (`SPEC.md` §7.7); rate limiting is
+`-32602
 rate_limited` rather than `-32005`; the `-32002` code exists; `connect`,
 `disconnect` and `message` events exist on `window.swarm`.
 
@@ -225,9 +230,10 @@ rate_limited` rather than `-32005`; the `-32002` code exists; `connect`,
 
 Up to four rows with the strings in §3, each `per-call` with an
 always-allow toggle, off by default. The sheet adds one line under the
-Swarm rows: *"Publishing spends your Swarm postage."* When the vault is
-locked and a feeds or signing row is ticked, nothing is prompted at sheet
-time; the unlock prompt appears on the first write (`SPEC.md` §6.11).
+Swarm rows: *"Publishing spends your Swarm postage."* The sheet's **Add**
+itself needs the vault unlocked (`SPEC.md` §6.11), so no row is granted
+while locked; when the vault locks later, a feeds or signing write shows
+the unlock prompt (`SPEC.md` §6.11).
 
 Per-call prompts for rows granted through the unified sheet keep the shipped
 prompt screens and render in the sidebar with the Dapps tab active
@@ -252,6 +258,21 @@ pane's connection banner (`SPEC.md` §10.2) shows the dapp's Swarm
 capabilities beside it. Nothing in the wallet UI depends on the dapp
 record.
 
+### 9.4 `freedom://files`
+
+The explorer's four slots (`SPEC.md` §10.5):
+
+- **Publication record.** `publications.swarm`, `ref` a Swarm reference
+  (64 hexadecimal characters). The host writes it with `verified: true`
+  when `swarm_publishData`'s payload hashes to the CID of a file of the
+  same dapp (§10 item 5); a dapp records a `swarm_publishFiles` bundle's
+  root reference itself with `files_setPublication({ provider: "swarm",
+  ref })`, shown dapp-reported.
+- **Inspector.** The reference, and a `bzz://<ref>/` link.
+- **Verb.** None in this revision (a user-started publish would spend
+  postage and pick an identity; left for a later revision).
+- **Panel.** None.
+
 ## 10. Host implementation requirements
 
 1. The host MUST leave `window.swarm`'s API, tiers, limits and stores as
@@ -270,8 +291,16 @@ record.
    shipped prompt screens with the sidebar switched to the Dapps tab
    (`SPEC.md` §10.2), with the material facts of §9.1, and MUST keep the
    shipped prompt surfaces for `/1` sites.
-5. The host MUST implement the publish hook of `providers/files.md` §8.6 in
-   the main-process publish path without touching the provider API.
+5. The host MUST, in the main-process `swarm_publishData` path and
+   without touching the provider API, hash the payload to a CIDv1
+   (`providers/files.md` §8.5) and look it up in the Files content index
+   (`providers/files.md` §8.7) of each root readable at that moment; when
+   a file of the same dapp, authored by it, has that CID, the host writes
+   the Swarm publication record on it with `verified: true`
+   (`providers/files.md` §8.6, §9.4). One hash per publish. A root whose
+   key is not in memory (private while locked, both while sealed,
+   `SPEC.md` §6.11) is skipped, so a publish made then may leave no
+   record; the dapp can report it with `files_setPublication`.
 6. The host MUST apply the dapp key as the Swarm permission key. They are
    the same function (`SPEC.md` §3.2), in the development realm too, where
    it emits `dev:<label>:<port>` (`SPEC.md` §3.6), so no store re-keys, nothing
@@ -289,9 +318,10 @@ record.
 
 *Informative.* Upstream modules: `src/main/swarm/swarm-provider-ipc.js`
 (authority), `permission-manifests.js` (generalised by the core fetcher),
-`swarm-permissions.js`, `feed-store.js`, `publish-service.js` (the publish
-hook), `src/renderer/lib/swarm-provider.js` (consent routing to the Dapps
-pane for `/2` dapps).
+`swarm-permissions.js`, `feed-store.js`, `publish-service.js` (the
+publication-record CID match, §10 item 5),
+`src/renderer/lib/swarm-provider.js` (consent routing to the Dapps pane for
+`/2` dapps).
 
 ## 11. Security considerations and conformance checklist
 
@@ -324,8 +354,9 @@ Conformance checklist (`examples/swarm/`):
       sheet;
 - [ ] a feeds row with the vault locked yields the unlock prompt on the
       first `swarm_createFeed`, then the write;
-- [ ] `swarm_publishData` of a stored file's bytes marks the file
-      published and verified (`providers/files.md` §8.6);
+- [ ] `swarm_publishData` of a stored file's bytes writes
+      `publications.swarm` with `verified: true` and the file reads
+      `location: "published"` (§9.4, §10 item 5);
 - [ ] revoking a row removes its grant and auto-approve and keeps the
       identity and feed records; removing the dapp does the same;
 - [ ] the details page lists identity, feeds and publish history;

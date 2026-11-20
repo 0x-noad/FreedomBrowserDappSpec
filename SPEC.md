@@ -1,6 +1,6 @@
 # Freedom Browser Dapp Specification — Core
 
-**specVersion:** `1` · **Status:** draft 1, 2026-11-11 · **Applies to:** Freedom
+**specVersion:** `1` · **Status:** draft 1, 2026-11-19 · **Applies to:** Freedom
 Browser, upstream `solardev-xyz/freedom-browser`, written against v0.8.8 "Goa".
 
 This document is the **core** of the specification. It defines what a dapp
@@ -35,7 +35,7 @@ interpreted as in RFC 2119. Text marked *informative* carries no requirement.
 mechanism, the Files provider, and the management surfaces. Where it touches
 the shipped providers it does so only at the integration points their
 provider documents name (grants written by the unified sheet, listings on the
-details page, and the seed and publish records described in Appendix A
+details page, and the seed and publication records described in Appendix A
 and in `providers/radicle.md` and `providers/files.md`).
 
 1.5. **Local-first.** Files reads, the launcher, the details page and the
@@ -67,6 +67,7 @@ reserved (§12.1). Iframes, workers and service workers receive no
 | **surface** | where a provider's methods live: `window.dapp` (every provider this specification introduces) or its own global (the shipped providers) |
 | **root reference** | the content reference the host resolved the dapp's root from on a given load (§5.1) |
 | **added** | a dapp for which the user has pressed **Add** on the consent sheet at least once; it appears in `freedom://dapps` |
+| **identity vault** | the host's password-encrypted identity (in Freedom, the wallet seed phrase) with its idle lock. It MUST exist before a dapp can be added, and its lock gates what §6.11 says |
 
 *Informative.* "Provider" is the word Freedom already uses for its injected
 globals and EIP-1193 uses for the Ethereum object. Under EIP-1193 the
@@ -202,13 +203,13 @@ ignored on every other scheme, so a page cannot shadow its served manifest.
 
 The manifest is a JSON object whose `schema` field is
 `"freedom-manifest/2"`. The host MUST validate it against the published
-schema `schemas/freedom-manifest-2.schema.json` (§12.5); a manifest that
+schema `schemas/freedom-manifest-2.schema.json` (§12.6); a manifest that
 passes the published schema passes the host.
 
 | Field | Required | Rules |
 |---|---|---|
 | `schema` | yes | the string `freedom-manifest/2` |
-| `$schema` | no | a string: the JSON Schema URL that code editors read to validate the file as the author types, meant for this package's schema (§12.5). The host ignores it (it is signed over like any field). Allowed in the served `freedom-manifest.json` only; inline on `web3://` (§4.1) it is a manifest error |
+| `$schema` | no | a string: the JSON Schema URL that code editors read to validate the file as the author types, meant for this package's schema (§12.6). The host ignores it (it is signed over like any field). Allowed in the served `freedom-manifest.json` only; inline on `web3://` (§4.1) it is a manifest error |
 | `name` | yes | ≤ 32 characters; display only, never identity (§3.2) |
 | `description` | yes | ≤ 160 characters; shown on the consent sheet and the details page (§6.5, §10.4), as author text (§11 N12) |
 | `icon` | yes | §4.4 |
@@ -477,14 +478,14 @@ provider id (§12.1) and `name` lowercase ASCII letters, digits and hyphens.
 The same ids are used in the manifest (`capabilities.<provider>.<name>`),
 in `dapp_requestCapabilities`, in `dapp_getCapabilities` and on the
 consent sheet. Each provider document lists its capabilities with their
-tier, scope shape and consent-sheet string, and `registry.json` (§12.5)
+tier, scope shape and consent-sheet string, and `registry.json` (§12.6)
 carries the union.
 
 ### 6.2 Tiers
 
 | Tier | Meaning |
 |---|---|
-| `public` | no grant needed. Discovery and quota calls (`dapp_getProviders`, `dapp_getCapabilities`, `dapp_getManifest`, `files_getQuota`, `dapp_fetch` on `web3://`). To a site without a grant record (§6.8) a public answer MUST be the same for every user of that host build: it describes the host, never the user's settings, data or node state (`dapp_getProviders` §7.4, `files_getQuota` in `providers/files.md` §8.2) |
+| `public` | no grant needed. Discovery and quota calls (`dapp_getProviders`, `dapp_getCapabilities`, `dapp_getManifest`, `dapp_getIdentityState`, `files_getQuota`, `dapp_fetch` on `web3://`). To a site without a grant record (§6.8) a public answer MUST be the same for every user of that host build: it describes the host, never the user's settings, data or node state (`dapp_getProviders` §7.4, `files_getQuota` in `providers/files.md` §8.2) |
 | `consent` | granted once on the consent sheet; thereafter silent. Reads and writes to the dapp's own storage, shared reads within scope |
 | `per-call` | each use prompts, unless the user has set **always-allow** for that capability on the sheet or the details page. Anything that leaves the device, costs the user, or is irreversible: Swarm publish, feed writes, messaging sends |
 
@@ -520,6 +521,16 @@ consent sheet. `capabilities` is an array of `{ id, scope? }`.
   bounds what a dapp may ever ask.
 - Without a valid `/2` manifest, every call beyond the public tier rejects
   `4100` with `data.reason: "no_manifest"`.
+- While no identity vault exists (§6.11), `dapp_requestCapabilities` opens
+  the pane on the **create identity** step instead of the sheet (§10.2)
+  and waits as a sheet does (300 s, §7.11); when onboarding completes the
+  sheet proper follows. If the step is dismissed or the wait ends, the call
+  rejects `4100` with `data.reason: "no_identity"` and the dismissal is
+  cached for the document like a decline (§6.6) until an identity exists.
+  No other call reports this reason: without a vault there is no record
+  and no grant, so every other capability-gated call rejects
+  `unauthorized` as always, and a site without a record learns nothing
+  about the user (§6.2, N3).
 - A capability-gated call made before any grant MUST reject `4100` with
   `data.reason: "unauthorized"`; it never prompts. The dapp controls the
   moment by calling `dapp_requestCapabilities` (or the user by pressing
@@ -588,7 +599,9 @@ in that window rejects `4001 sheet_busy`. A sheet is bound to its tab:
 switching tabs hides it, closing or navigating the tab dismisses it with
 `4001 navigated`. Closing the sidebar leaves a sheet pending and recallable
 from the indicator. Per-call prompts follow their provider's shipped
-rules.
+rules. An unlock prompt (§6.11) raised by a call while a sheet is open
+waits behind the sheet; one raised by the sheet's own **Add** is part of
+the sheet.
 
 ### 6.8 The grant record
 
@@ -629,22 +642,85 @@ subscriptions on the affected provider, emits `capabilitiesChanged`, and
 **deletes no data**: files stay until the user removes the dapp or deletes
 them in `freedom://files`.
 
-### 6.11 Locked identity
+### 6.11 The identity vault
 
-Freedom's identity vault (the password-encrypted mnemonic with its idle
-lock) gates **signing only**. When a `per-call` capability that needs the
-vault is invoked while it is locked, the **unlock prompt replaces the
-per-call prompt**; on unlock the original prompt (or always-allow) runs; on
-dismiss the call rejects `4100` with `data.reason: "locked"`. Each provider
-document marks which capabilities need the vault. The Files provider never
-does.
+**Required.** A dapp can be added only once the host's identity vault
+exists (§2): the dapp data keys of §8.1 derive from it. A user without one
+who opens a dapp is offered the host's identity onboarding from the pane
+(§10.2) and by `dapp_requestCapabilities` (§6.4), the only call that
+reports `no_identity`. Every public-tier method (§6.2) works without a
+vault.
+
+**Three states.** From launch until the user's first unlock of the session
+the vault is **sealed**: no dapp data key is in memory, so neither root of
+dapp storage is readable. The first unlock derives both keys (§8.1). The
+idle lock afterwards leaves the vault **locked**: the private key is
+dropped, the shared key stays until the browser exits. Otherwise it is
+**unlocked**. A sealed vault is reported as locked with `sealed: true`
+(§7.4).
+
+**What the lock gates.** While the vault is locked the host MUST refuse:
+
+- every capability a provider's §2 marks as needing the vault (signing);
+- every Files call that names `root: "private"` in any position (the
+  `from` or `to` of a `copy` included) except `files_getQuota`;
+  `files_unsubscribe` is never gated. While **sealed**, every Files call
+  that names either root, except `files_getQuota`
+  (`providers/files.md` §2);
+- every surface action that **grants or widens**: the **Add** or **OK**
+  that commits at least one new or widened row on the consent sheet (never
+  the tick itself, and never an **Add** that changes no grant), approving
+  an update notice (§5.3) or a signing-key warning (§5.7), always-allow
+  on, **Resume**, the Freedom Agent switches on, raising a storage figure
+  (the storage prompt's accept included, `providers/files.md` §8.8), the
+  developer setting on (§3.6), and **Export** of a private folder (§10.7);
+  while sealed, **Export** of shared files too.
+
+Once unsealed, the lock never gates the **shared pool** (the pool is
+"treat it as published" by its own disclosure, §6.5, and Freedom Agent's
+reads continue), nor any action that **narrows**: untick, revoke,
+always-allow off, **Pause**, **Delete**, **Remove dapp**, Agent switches
+off, the developer setting off, **Wipe dev data**. Reads of grants,
+manifests, usage figures and logs, and **Clear** on a log, are never gated.
+Any control not named here is not gated.
+
+**Mechanism.** The unlock prompt is shown only for a call that would
+otherwise proceed: the other `4100` conditions are checked first, in the
+order `no_manifest`, `unauthorized`, `not_in_manifest`, `update_pending`,
+`disabled`, `agent_custody`. A gated call from the fronted tab shows the
+host's **unlock prompt** (§10.2) in place of whatever prompt the call would
+have had; on unlock the original prompt (or always-allow) runs and the call
+proceeds; on dismiss the call rejects `4100` with `data.reason: "locked"`
+and the dismissal is cached for the document: further gated calls reject
+`locked` at once until the vault unlocks or the document reloads. From a
+background tab the call waits for an unlock from any source (the pane's
+**Unlock**, another tab's prompt) for 300 s (§7.11), showing the prompt if
+its tab is fronted meanwhile, then rejects `locked`. A gated surface action
+shows the prompt when pressed; an unlock prompt raised by a call while a
+sheet is open waits behind the sheet (§6.7). A subscription on a private
+root survives a lock: nothing is delivered while locked and nothing is
+replayed on unlock; a dapp refreshes on `identityChanged`. Dapp calls never
+reset the vault's idle timer: only the user's own acts do, so a dapp cannot
+hold the vault open by polling. Added dapps receive `identityChanged`
+(§7.5) on every change of `exists`, `locked` or `sealed` and may read the
+state with `dapp_getIdentityState` (§7.4).
+
+**Deleting the vault.** Because the data keys derive from the vault's
+secret, the host's delete-vault confirm MUST say that dapp data stays on
+disk and becomes readable again only by importing the same recovery phrase
+(§8.1). Records, grants and logs survive the deletion; added dapps receive
+`identityChanged` with `exists: false` and their capability-gated calls
+reject `4100 no_identity` until an identity exists again; the pane offers
+**Create identity**. After a different phrase is imported, a folder whose
+contents no longer decrypt is shown in `freedom://files` as "from a
+previous identity" with **Delete** only; the host wipes nothing on its own.
 
 ### 6.12 Activity log
 
 The host MUST keep a per-dapp **activity log** of every write and of every
 action that leaves the device or commits the user's node, as each provider
 document lists under its host requirements (Files write, delete, rename, copy,
-setPublished; Swarm publish, feed update, SOC write and send; Radicle seed,
+setPublication; Swarm publish, feed update, SOC write and send; Radicle seed,
 unseed, sync and COB write; wallet transactions), and of every action that ran
 under always-allow, with time, action, target and size. Reads are not logged,
 except Freedom Agent reads of the shared pool, which go to the Agent's own log
@@ -655,7 +731,7 @@ readable by pages.
 The host keeps a second log of the same shape and limits for **Freedom
 Agent**, which is not a dapp and has no details page: every Agent read and
 add in the shared pool (§9.1), shown in `freedom://files` beside the Agent
-controls with its own **Clear** (`providers/files.md` §9.3).
+controls with its own **Clear** (§10.5).
 
 ### 6.13 Never enumerable
 
@@ -727,6 +803,7 @@ All core methods are `public` tier.
 | `dapp_relinquish` | `{ capabilities?: string[] }` | `{}` after dropping the named (or all) grants (§6.10) |
 | `dapp_getManifest` | none | `{ version, reference, signed, pending?, updatePending, pendingVersion? }`: for an added dapp, the record the host holds, even while the new build's manifest is missing or invalid (§5.6); `pending` is `"update"` (§5.3), `"missing"` or `"invalid"` (§5.6) or `"key-change"` (§5.7) while that notice is unanswered and absent otherwise, so a blocked dapp can say why; `updatePending` is `pending === "update"`, kept from the first shape. For a site that is not added, the fetched manifest's `version`, the `reference` resolved for this load (`""` when unknown, §5.1), `signed`, no `pending` and `updatePending: false`; `4100 no_manifest` for a site without a record and without a valid manifest |
 | `dapp_cancelJob` | `{ jobId }` | `{}`; cancels a job this dapp started (§7.10) |
+| `dapp_getIdentityState` | none | `{ exists, locked, sealed }` (§6.11) for an added dapp; `sealed` implies `locked`. For a site that is not added, `{ exists: true, locked: false, sealed: false }`: whether the user has an identity, and whether it is open, is the user's state (§6.2) |
 | `dapp_fetch` | `{ url }` | `{ status, headers, bytes }`; `web3://` origins only (§7.14) |
 
 There is no connect, disconnect or session method (§7.6).
@@ -742,6 +819,7 @@ EIP-1193 and `window.swarm`. Core events:
 | `updatePending` | `{ fromVersion, toVersion }` | an update notice was raised (§5.4) |
 | `updateApplied` | `{ version }` | the user approved an update |
 | `providersChanged` | the new `dapp_getProviders` result | a provider became available or unavailable; sent to added dapps only (§7.4) |
+| `identityChanged` | `{ exists, locked, sealed }` | the identity vault was created, deleted, unsealed, locked or unlocked (§6.11); sent to added dapps only |
 | `job:progress`, `job:done`, `job:failed` | `{ jobId, provider, … }` | §7.10 (no v1 provider emits them) |
 
 Provider events are namespaced `<provider>:<event>` (for example
@@ -808,7 +886,9 @@ invent one.
 | large writes and copies; any call that opens a sheet or prompt | 300 s, prompt time included |
 | jobs | none after start (§7.10) |
 
-A timeout rejects `-32603` with `data.reason: "timeout"`. A provider
+A timeout rejects `-32603` with `data.reason: "timeout"`, except the two
+waits of §6.4 and §6.11 (create identity, unlock), which use the 300 s
+figure and reject `4100` with their own reason when it ends. A provider
 document MAY tighten per method.
 
 ### 7.12 Rate limits
@@ -832,7 +912,7 @@ it called.
 | Code | Meaning | Core `data.reason` values |
 |---|---|---|
 | `4001` | the user rejected | `user_rejected`, `cooldown`, `sheet_busy`, `navigated` |
-| `4100` | not authorized | `unauthorized`, `disabled`, `locked`, `update_pending`, `no_manifest`, `not_in_manifest`, `agent_custody` |
+| `4100` | not authorized | `unauthorized`, `disabled`, `locked`, `no_identity`, `update_pending`, `no_manifest`, `not_in_manifest`, `agent_custody`; when several hold, §6.11 gives the order |
 | `4200` | unknown method | |
 | `4300` | quota exceeded | set per provider (Files: `dapp_quota`, `pool_quota`, `file_too_large`, `too_many_files`) |
 | `4409` | conflict | `conflict` (a conditional write failed), `exists` (create-only on an existing name) |
@@ -861,26 +941,29 @@ limit rejects `-32602 payload_too_large` with `data.limit`.
 
 Dapp bytes held on disk by a provider this specification introduces (in
 v1, the Files provider's private folders and shared pool) MUST be encrypted
-at rest with authenticated encryption and a per-file nonce under a random
-**per-profile data key**. The data key MUST be protected by the operating
-system's credential store (Keychain, DPAPI, libsecret or kwallet; in
-Electron through `safeStorage`): the *wrapped* data key MAY live beside the
-data, since only the credential store can unwrap it, and the data key
-itself is never written in the clear while a credential store exists. Two
-degraded cases are distinguished and both carry a persistent warning in
-the Dapps pane summary (§10.2) and under **Info** on every details
-page (§10.4): a **weak** store (Electron's `basic_text` backend), where
-the host still stores under the wrapped key and the warning says the
-keychain offers no real protection; and an **absent** store, where there is
-nothing to wrap with, the host MAY keep the data key in a plain key file
-readable only by the user, and the warning says the key is unprotected.
-The on-disk envelope MUST say which form the key is in, so the host can
-upgrade it when a store appears. In both cases the data is guarded only by
-file permissions and whatever disk encryption the user runs. The shipped
-providers' own stores are unchanged (§1.4). The key is **not** behind the
-identity vault's lock: data stays readable while the browser runs, and no storage
-call fails as locked. On-disk names MUST be hashed, so the data is opaque
-outside the host and the OS filesystem's case rules never apply.
+at rest with authenticated encryption and a per-file nonce under **data
+keys derived from the identity vault's secret** (§6.11): one key per root,
+each derived with a fixed, distinct info string from the vault's master
+secret (the recovery phrase's seed, never a wallet account key), so that
+the same recovery phrase on another install yields the same keys and a
+copied profile folder plus the phrase restores every dapp's data. No key is
+written to disk, wrapped or plain, and no operating-system credential store
+is involved. The keys never leave the main process (N6).
+
+Both keys are derived at the first unlock of a session; until then the
+vault is **sealed** and neither root is readable (§6.11). The **private**
+key MUST be dropped from memory when the vault locks and re-derived on
+unlock, so a locked vault leaves private folders, their names included,
+unreadable by anyone at the running browser; a plain per-folder byte count
+and file count are kept outside the encrypted data so `files_getQuota` and
+§10.5 can show usage while locked. Once derived, the **shared** key MUST
+stay in memory until the browser exits, so the shared pool stays readable
+through every later lock (§6.11). The shipped
+providers' own stores are unchanged (§1.4). On-disk names MUST be hashed,
+so the data is opaque outside the host and the OS filesystem's case rules
+never apply. A copied profile folder or a stolen disk yields ciphertext
+without the recovery phrase; a running, unlocked browser is guarded by the
+lock for private data and by the OS session lock for the rest (§11).
 
 ### 8.2 Quota interface
 
@@ -899,8 +982,9 @@ summary header sums them.
 
 **Remove dapp** on the details page MUST show a confirm that names the dapp
 and the bytes it holds, offers an **export** first (a decrypted copy of its
-private data to a user-chosen location), and asks whether to also remove
-every shared file the dapp authored, showing their count and bytes, with
+private data to a user-chosen location; while the vault is locked the
+export needs the unlock prompt first, §6.11), and asks whether to also
+remove every shared file the dapp authored, showing their count and bytes, with
 **keep** as the default. On OK the host unlinks the dapp's private data,
 its grants in every store (for a shipped provider, as that provider's own
 disconnect does), its wallet connection (§6.14), its record and its
@@ -950,16 +1034,22 @@ banner still offers **Add**.
 A **Dapps** tab in the sidebar beside Wallet, Nodes and Settings. **Every dapp
 prompt renders in the sidebar with this tab active**: the consent sheet
 (§6.5), the update notice (§5.3), the signing-key warning (§5.7) and the
-storage prompt (`providers/files.md` §8.8) render inside the pane; per-call
+storage prompt (`providers/files.md` §8.8) and the **create identity** step
+(§6.4) render inside the pane; the **unlock prompt** (§6.11) is the host's
+existing one and covers the sidebar whichever tab is active; per-call
 prompts for Swarm and Radicle rows granted through the unified sheet keep
 their shipped prompt screens, which cover the sidebar whichever tab is active,
 and the host MUST switch the sidebar to this tab before showing one. The
 sidebar opens when a prompt arrives; the page is not dimmed; the call waits up
 to 300 s. Wallet transaction and signature approvals stay in the Wallet pane.
 
-The pane MUST NOT depend on a wallet or identity vault existing: before any
-vault is created the sidebar still offers the Dapps tab, and the pane is
-fully usable then, as it is while locked (§10.7).
+The sidebar offers the Dapps tab before any identity vault exists, but a
+dapp cannot be added until one does (§6.11): the connection banner for a
+dapp then shows **Create identity** in place of **Add**, with the line
+"Dapps keep their data under your identity", and opens the host's identity
+onboarding; a `dapp_requestCapabilities` call waits for it (§6.4). Once
+onboarding completes the sheet proper follows. While the vault is locked
+the pane is usable and its widening controls prompt for unlock (§10.7).
 
 At rest, top to bottom:
 
@@ -974,9 +1064,9 @@ for a dapp; nothing in the wallet UI depends on the dapp record.
    pool cap, with the **Total dapp storage** control: the pool cap, offered
    as 4 GB, 8 GB, 16 GB or 32 GB, default 8 GB, `providers/files.md` §8.1),
    dapps with updates pending or paused, Freedom Agent shared
-access state (off / read / read + add), the **not protected by the OS
-keychain** warning when §8.1 calls for it; links to `freedom://dapps` and
-`freedom://files`.
+   access state (off / read / read + add), and whether the identity vault
+   is sealed or locked, with **Unlock**; links to `freedom://dapps` and
+   `freedom://files`.
 3. **Toggles**: the Freedom Agent shared read (with scope) and add switches
    (§9.1); **Show the `d` indicator**; and a collapsed **Developer
    settings** group holding the developer setting (§3.6) with **Wipe dev
@@ -984,8 +1074,7 @@ keychain** warning when §8.1 calls for it; links to `freedom://dapps` and
    page, §10.6); while the setting is on, its tag shows outside the group.
 
 *Informative.* The connection banner, list and usage footer follow the
-pattern of Freedom's existing sidebar connection rows and of the Data pane
-in the author's vault fork.
+pattern of Freedom's existing sidebar connection rows.
 
 ### 10.3 `freedom://dapps`
 
@@ -1015,8 +1104,7 @@ row that carries a control belongs under Settings, whatever else it shows.
 `homepage`, `source`, `author`, `minSpecVersion` (marked when above the
 host's, §4.2); per-provider usage (§8.3)
 with links into `freedom://files`; Swarm identity mode, feeds and publish
-history; the **not protected by the OS keychain** warning when §8.1 calls
-for it; and the **Activity** log (§6.12) with its **Clear**, which empties
+history; and the **Activity** log (§6.12) with its **Clear**, which empties
 the log and changes nothing about the dapp. `homepage`, `source` and
 `author.url` are shown in full as the author's URLs (§11 N12) and open in a
 new tab only when the user clicks them, never on their own; a `rad:` source
@@ -1035,14 +1123,66 @@ never edited beyond that (§6.14); and last, set apart, **Remove dapp**
 
 ### 10.5 `freedom://files`
 
-The files explorer, defined in `providers/files.md`: the shared pool as one
-list with an author column, sortable by author, date added and location
-(local / published); **Add files**, **Export**, **Delete**; the pool cap and
-each dapp's shared allowance shown, with links to where they are set (the
-Dapps pane, §10.2, and the details page, §10.4); the Freedom Agent controls
-(§9.1);
-and each dapp's private folder with **Export** and **Delete** and its usage.
-There is no reveal-in-Finder: data on disk is opaque (§8.1).
+The files explorer. Like the details page it is a **core surface**: the
+host draws the skeleton defined here, the Files provider supplies the two
+stores it shows, and every other provider appears only through the four
+**slots** below, filled from its own document's §9 (§12.2, §12.5). No
+provider adds a view, a column, a header or a control anywhere else on the
+page.
+
+**Shared view.** Every author's files in one list with an **author**
+column, sortable by **author**, **date added** and **location** (`local` /
+`published`, the publication slot). Actions: **Add files** (an
+operating-system open dialog; the files are added with author `user`,
+under `providers/files.md` §8.3, §8.4 and the pool cap), **Export** (a
+decrypted copy of the selected files to a user-chosen location),
+**Delete**. The **pool cap** and **each dapp's allowance** are shown with
+their usage and link to where they are set (the Dapps pane's **Total dapp
+storage**, §10.2; the details page's **Storage**, §10.4). Beneath the list:
+the **Freedom Agent** controls (§9.1, `providers/files.md` §9.4) with the
+**Agent log** under them (every Agent read and add, with file, time and
+the conversation it served; the §6.12 ring buffer and **Clear**), then any
+provider panels (slot 4).
+
+**Private view.** One folder per added dapp (and per `dev:` dapp under the
+Development heading, §10.8), showing usage against its limit, with
+**Export** and **Delete**. A folder left behind by a signing-key warning
+(§5.7) is shown as belonging to the previous build.
+
+There is no reveal-in-Finder on either view: data on disk is opaque
+(§8.1). While the identity vault is locked the shared view is fully
+usable; each private folder shows its usage only, with **Unlock** in place
+of its contents and **Export**. While it is sealed both views show usage
+and **Unlock** only (§10.7).
+
+**Provider slots.** Four, and only these:
+
+1. **Publication.** The location column reads the file's **publication
+   records** (`providers/files.md` §8.6): at most one per provider, keyed
+   by provider id. The column shows the provider's display name
+   ("Swarm"), several when several providers hold a record, and labels a
+   record the dapp reported itself "dapp-reported". The record's
+   reference format and when the host writes one are the provider's to
+   say (its §9).
+2. **Inspector.** Selecting a file shows the Files facts (name, author,
+   type, size, CID, dates) and beneath them one group per provider that
+   holds a publication record on the file or declares inspector facts:
+   the reference, a link that opens in a new tab on click only (the
+   §10.4 rule), and provider status such as pinned or replicated.
+3. **Actions.** The per-file menu holds **Export** and **Delete**, then
+   one verb per provider that declares one ("Publish to Swarm", "Add to
+   IPFS"). A verb is the user's own action: it runs in the main process
+   under the user's authority, never under a dapp's grant, with the
+   provider's own prompts (postage, identity, unlock), and enters no
+   dapp's activity log. Where it produces a reference the host writes the
+   publication record with `verified: true`. The verb is absent while
+   the provider is unavailable (§12.4); records already made stay shown.
+4. **Panel.** A section beneath the Agent controls, one per provider
+   that declares one, for provider-wide figures or controls about stored
+   files (a pin set's total, a sync switch). None in this revision.
+
+Column names, verbs and labels are the host's wording. A provider with
+nothing to contribute says "none" in its §9.
 
 ### 10.6 The shipped management screens
 
@@ -1056,10 +1196,16 @@ details** in place of its inline toggles.
 
 ### 10.7 Locked identity
 
-`freedom://dapps`, `freedom://files` and the Dapps pane stay fully usable
-while the identity vault is locked, and before any vault exists (§10.2). Only
-actions that need signing show the unlock prompt when invoked (§6.11). There
-is no locked view.
+`freedom://dapps`, the details page and the Dapps pane stay open while the
+identity vault is locked: every fact and every narrowing control works, and
+every widening control (§6.11) shows the unlock prompt when pressed. In
+`freedom://files` the shared view is unaffected and each private folder
+shows its usage with **Unlock** in place of its contents and **Export**,
+since the private key is not in memory (§8.1); while the vault is sealed
+the shared view does the same. The removal confirm's export
+offer prompts for unlock first (§8.4). Before any vault exists the surfaces
+list nothing, since nothing can have been added, and the pane offers
+**Create identity** (§10.2).
 
 ### 10.8 Development data
 
@@ -1088,13 +1234,15 @@ Each provider document references these; none may weaken them.
   error.
 - **N5.** Nothing a dapp wrote leaves the device without a per-call prompt
   or an always-allow the user set against a fetchable manifest.
-- **N6.** Keys (Swarm app-scoped keys, and any key the host holds to verify
-  manifests) never leave the main process; an external node or gateway
-  receives signed material, never a key.
+- **N6.** Keys (Swarm app-scoped keys, the dapp data keys of §8.1, and any key
+  the host holds to verify manifests) never leave the main process; an
+  external node or gateway receives signed material, never a key.
 - **N7.** Rate limits on public-tier reads and on write methods per dapp
   key (§7.12).
-- **N8.** The identity vault's lock gates signing only; it never gates
-  stored data (§6.11, §8.1).
+- **N8.** The identity vault's lock gates signing, every read and write of
+  a dapp's private data, and every action that grants or widens; a sealed
+  vault gates all dapp data. The lock never gates the unsealed shared pool
+  or any action that narrows (§6.11, §8.1).
 - **N9.** The host never executes or interprets dapp bytes: files are opaque
   blobs sniffed for type only, the manifest is data validated against the
   schema, and the icon is re-encoded.
@@ -1132,9 +1280,10 @@ The `dapp` prefix is the core's. No other prefix is defined.
 Every provider is described by one document written to
 `providers/TEMPLATE.md`, in that template's order: identity; host
 dependencies; capabilities table; methods table; events table; manifest
-block schema; `data.reason` strings; storage and quota; consent-sheet and
-details-page contributions (under the page's **Info** and **Settings**
-headers only, §10.4); host implementation requirements; security
+block schema; `data.reason` strings; storage and quota; consent-sheet,
+details-page (under the page's **Info** and **Settings** headers only,
+§10.4) and `freedom://files` (the four slots of §10.5, or none)
+contributions; host implementation requirements; security
 considerations and conformance checklist. A provider document inherits every
 convention of §7 unless it says otherwise, and may never weaken §11.
 
@@ -1160,13 +1309,64 @@ its shipped payload, which may carry no `data`); for an added dapp
 `providersChanged` fires on change; a site without a record sees neither
 (§7.4, §6.2).
 
-### 12.5 Deliverables
+### 12.5 Integrating with another provider
+
+A provider that touches another provider's objects, operations or surfaces
+does so through one of these patterns, names the pattern in its §2 and
+nothing else is permitted.
+
+- **Shared core types.** A value that crosses providers is defined once in
+  the core and produced or accepted by providers: the file reference of
+  §7.8, the job of §7.10, the scope shapes of §6.3. A provider never
+  defines a type for another provider to accept.
+- **Annotation records.** A provider attaches facts to another provider's
+  objects through a record the **owning** provider defines, keyed by the
+  annotating provider's id, persisted by the owner and announced by the
+  owner's event. The Files publication record (`providers/files.md` §8.6)
+  is the model: Swarm fills `publications.swarm`; Files owns the shape,
+  the event and the method and names no provider. The annotating provider
+  never writes the owner's store directly and reads it only through an
+  index the owner keeps for the purpose (for Files, the content index of
+  `providers/files.md` §8.7), never the store's files.
+- **Slot contributions.** A provider appears on a core surface only in the
+  slots the core names: the consent sheet's rows (§6.5), the details
+  page's **Info** and **Settings** (§10.4), the explorer's four slots
+  (§10.5). It fills them from its own §9 and adds no header, view or
+  column of its own.
+- **Composite actions.** An action that spans two providers (publishing a
+  stored file to Swarm, adding one to IPFS) is a method of the provider
+  named by its prefix. That provider checks the other grant it needs in
+  the core grant store (§6.8) before acting and rejects `4100
+  unauthorized` without it. No grant implies another and no provider
+  grants on another's behalf. Started by the user from a surface (an
+  explorer verb, §10.5) the same action runs under the user's authority
+  with the provider's own prompts and needs no dapp grant.
+- **Declared dependencies.** Each provider's §2 lists the providers it
+  integrates with, by id, with the pattern used and the behaviour when the
+  partner is absent or unavailable (§12.4): records already made stay
+  shown, new ones are not made, verbs are absent. A dependency is never
+  required: a provider that cannot find its partner degrades; it does not
+  become unavailable itself.
+- **Identity stays per provider.** Keys and identities (Swarm's publisher
+  identities, Radicle's node identity, the wallet's accounts) belong to
+  their provider. No provider derives from, signs with or exposes
+  another's, and the core brokers no key material (N6). Which of them the
+  identity vault's lock gates is each provider's own §2 statement (§6.11).
+
+Three things no pattern allows: a page-facing method of one provider that
+calls another provider on the page's behalf; a provider adding a code to
+§7.13 or a reason to another provider's §7; a provider reading another's
+store except through the index.
+
+### 12.6 Deliverables
 
 The specification consists of: this `SPEC.md`; `providers/TEMPLATE.md` and
 one `providers/<id>.md` per provider; `schemas/freedom-manifest-2.schema.json`
 composed from `schemas/providers/<id>.schema.json`; `registry.json`, every
-capability with id, provider, tier, scope schema, the methods it unlocks and
-its consent string, generated from the provider documents; `types/dapp.d.ts`;
+capability with id, provider, tier, scope schema, the methods it unlocks,
+whether the identity vault's lock gates it (`needsIdentityVault`, §6.11)
+and its consent string, generated from the provider documents;
+`types/dapp.d.ts`;
 `examples/<provider>/`, one minimal dapp per provider that doubles as the
 conformance check; and `AUTHORING.md`.
 
@@ -1185,12 +1385,13 @@ A conforming host:
 5. keeps grants per dapp key with one sub-object per provider (§6.8) and
    plans to fold its per-provider stores into one;
 6. implements the consent sheet, decline semantics, pausing, revocation,
-   locked-identity rule and activity log of §6;
+   identity-vault rules (existence, sealed and locked) and activity log of
+   §6;
 7. implements the core methods, events, binary, pagination, job, timeout,
    rate-limit and error conventions of §7;
-8. encrypts stored dapp data at rest under a per-profile data key wrapped by
-   the OS credential store (§8.1)
-   and implements the removal flow of §8.4;
+8. encrypts stored dapp data at rest under keys derived from the identity
+   vault, drops the private key on lock (§8.1), requires the vault before
+   any grant (§6.11), and implements the removal flow of §8.4;
 9. implements the Freedom Agent access and custody rules of §9;
 10. provides the surfaces of §10;
 11. upholds every rule of §11;
@@ -1240,12 +1441,19 @@ v0.8.8 each part of the core naturally lands.
   `%APPDATA%\Freedom`; `Profiles/<id>` for non-default profiles;
   `Freedom Dev/<checkout>/` for a source checkout):
   `dapp-files/private/<sha256(dappKey)>/` and `dapp-files/shared/`, content
-  encrypted under the per-profile data key (`dapp-files/key.enc`, an
-  envelope wrapped by `safeStorage` or, with no credential store, plain),
-  hashed on-disk names, and a
-  sidecar index of names, CIDs, types, sizes, provenance and `published`.
-- **Publish hook.** The `published` record on a file is set in main's Swarm
-  publish path, which already sees the bytes (`providers/files.md` §8.6).
+  encrypted under two keys derived from the vault: HKDF-SHA256 over the
+  BIP-39 seed of the vault's mnemonic (empty passphrase) with the info
+  strings `freedom-dapp-files/private/1` and `freedom-dapp-files/shared/1`,
+  derived in the vault service at the first unlock of a session, where
+  the seed is already unwrapped, and handed to the files service as bytes,
+  the private one dropped on `vault:locked`; hashed on-disk names; a
+  sidecar index per root encrypted under that root's key (names, CIDs,
+  types, sizes, provenance, `publications`) and plain per-folder byte and
+  file counters for `files_getQuota` and §10.5. No key file exists.
+- **Publication records.** Swarm's record on a stored file is written in
+  main's Swarm publish path, which already sees the bytes
+  (`providers/swarm.md` §10); Files owns the record (`providers/files.md`
+  §8.6).
 - **Seed records.** The dapp key is recorded against each RID a dapp's
   `radicle_seed` is approved for, in the Radicle grant store.
 - **Wallet transactions in the activity log.** Taken from the wallet's

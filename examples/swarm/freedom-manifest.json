@@ -1,12 +1,12 @@
 {
   "schema": "freedom-manifest/2",
   "name": "Swarm check",
-  "description": "Conformance fixture for the Swarm provider's integration points: unified sheet, publish, feeds, the publish hook.",
+  "description": "Conformance fixture for the Swarm provider's integration points: unified sheet, publish, feeds, publication records.",
   "icon": "./icon.png",
   "version": "1.0.0",
   "capabilities": {
     "files": {
-      "private": { "why": "Stores a test file whose bytes are then published, to check the publish hook." }
+      "private": { "why": "Stores a test file whose bytes are then published, to check the publication record." }
     },
     "swarm": {
       "publish":   { "why": "Publishes a small test blob using your postage." },

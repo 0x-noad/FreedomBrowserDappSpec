@@ -41,13 +41,15 @@ to `window.dapp`, and from the upstream document where it applies to
   `dapp_getProviders` reports `status: "unavailable"` with the same reason
   to an added dapp (`SPEC.md` §7.4; a site without a record gets neither).
   `window.radicle` itself is always present on a dapp page.
-- **Identity vault.** None. Writes sign with the Radicle **node identity**,
-  which is the node's own key, not the wallet vault; the vault's lock does
-  not gate Radicle calls (as shipped).
+- **Identity vault.** None for signing: writes sign with the Radicle
+  **node identity**, which is the node's own key, not the wallet vault, so
+  the lock gates no Radicle call (as shipped). The vault must exist for
+  any grant, as for every provider (`SPEC.md` §6.11).
 - **Offline.** `radicle_getCapabilities`, `radicle_listSeededRepos`,
   `radicle_getSeedStatus` and `radicle_disconnect` work without peers;
   seeding, syncing and writes need the node running and announce over the
   network, failing fast with `4900` when it is stopped.
+- **Other providers.** None.
 
 ## 3. Capabilities
 
@@ -240,6 +242,11 @@ and revoke. Nothing under **Info**: the user's identity is not shown here
 (it is the user's, not the dapp's). When the manifest's
 `source` is a Radicle RID (`rad:z…`), the **Info** row for `source` opens the
 host's own repository page (`SPEC.md` §10.4).
+
+### 9.3 `freedom://files`
+
+None: Radicle holds no stored-file records, verbs or panel
+(`SPEC.md` §10.5).
 
 ## 10. Host implementation requirements
 

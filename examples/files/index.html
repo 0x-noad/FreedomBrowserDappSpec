@@ -42,7 +42,7 @@
       <li><code>freedom://dapps</code> shows this dapp’s tile; its details page shows private usage of 512 MB, shared usage of the allowance, and three capability rows with enabled and revoke.</li>
       <li><code>freedom://files</code> shows <code>shared-check.json</code> under this dapp’s key in the author column while the run holds it, sortable by author, date added and location.</li>
       <li>Pausing a capability on the details page makes the matching calls fail with <code>4100 disabled</code>; resuming restores them without a sheet.</li>
-      <li>Locking the identity vault changes nothing on this page.</li>
+      <li>With the identity vault locked, pressing <b>Run</b> again shows the unlock prompt on the first private call and the run completes after unlock; the shared rows never waited. A private call made after the next lock does not postpone the lock after that.</li>
       <li>Removing the dapp asks about the bytes used, offers an export, and asks whether to remove its shared files with <i>keep</i> selected.</li>
     </ol>
   </section>

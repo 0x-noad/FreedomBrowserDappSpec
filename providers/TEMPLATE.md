@@ -24,8 +24,12 @@
 - **When absent.** <What the dapp sees: `4900` with which `data.reason`
   values, and what `dapp_getProviders` reports as `status`.>
 - **Identity vault.** <Which capabilities need the vault unlocked, so that
-  `SPEC.md` §6.11 applies to them; "none" if none.>
+  `SPEC.md` §6.11 applies to them; "none" if none. The vault's existence
+  is required for every grant by the core, not by the provider.>
 - **Offline.** <What works with no network (`SPEC.md` §1.5).>
+- **Other providers.** <Each provider this one integrates with, by id,
+  the pattern of `SPEC.md` §12.5 it uses, and what happens when that
+  provider is absent or unavailable; "none" if none.>
 
 ## 3. Capabilities
 
@@ -120,6 +124,10 @@ Binary or other conventions that differ from `SPEC.md` §7: <state them, or
 - **Details page**: what this provider shows under **Info** (read-only
   facts and figures) and under **Settings** (every row with a control:
   revoke, unseed, allowance, …). Never a third header (`SPEC.md` §10.4).
+- **`freedom://files`**: what this provider puts in each of the
+  explorer's four slots (`SPEC.md` §10.5): its publication record (the
+  `ref` format and when the host writes one), inspector facts, a per-file
+  verb, a panel; or "none".
 - **Other pages**: any page or pane section this provider owns.
 
 ## 10. Host implementation requirements

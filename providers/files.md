@@ -24,20 +24,30 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
 ## 2. Host dependencies
 
 - **Subsystem.** The host's own file store under the profile directory and
-  the per-profile data key, wrapped by the operating system's credential
-  store (`SPEC.md` §8.1). No node, no network.
-- **When absent.** The provider is never absent on a conforming host. A
-    weak or absent credential store does not make it absent (`SPEC.md` §8.1:
-  store and warn). If the data key cannot be unwrapped or the store cannot be
-  opened, every method rejects `4900` with
+  the two data keys derived from the identity vault (`SPEC.md` §8.1). No
+  node, no network.
+- **When absent.** The provider is never absent on a conforming host. If
+  the store cannot be opened, every method rejects `4900` with
   `data.reason: "store_unavailable"` for an added dapp, and
   `dapp_getProviders` reports `status: "unavailable"` to it (`SPEC.md`
   §7.4). A site without a record still gets §8.2's defaults from
   `files_getQuota`: whether the user's store opens is the user's state
   (`SPEC.md` §6.2).
-- **Identity vault.** None. No Files capability needs the vault; the
-  provider is unaffected by the vault's lock (`SPEC.md` §6.11, N8).
+- **Identity vault.** Every call that names `root: "private"` in any
+  position (`copy`'s `from` or `to` included) except `files_getQuota` needs
+  the vault unlocked: the private key is not in memory while it is locked
+  (`SPEC.md` §8.1), so `SPEC.md` §6.11 applies (from the fronted tab the
+  call shows the unlock prompt and proceeds on unlock; `4100 locked` on
+  dismiss or when the wait ends). While the vault is **sealed** (no unlock
+  yet this session) the same holds for `root: "shared"`; once unsealed,
+  shared calls are never gated. `files_unsubscribe` and `files_getQuota`
+  are never gated. No Files capability needs the vault for signing.
 - **Offline.** Everything works offline.
+- **Other providers.** Any provider that publishes bytes may hold a
+  **publication record** on a file (§8.6; the annotation pattern of
+  `SPEC.md` §12.5). The record's shape, event and method are
+  provider-agnostic; in this revision Swarm is the one writer
+  (`providers/swarm.md` §9.4). Files needs none of them.
 
 ## 3. Capabilities
 
@@ -60,7 +70,7 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
   *"Everything in your shared folder, including which dapp added each file,
   is visible to every dapp you allow to read it."*
 - **`files:write-shared`** unlocks writes on `root: "shared"`: `write`,
-  `writeJson`, `delete`, `rename`, `copy` into shared, `setPublished`, on
+  `writeJson`, `delete`, `rename`, `copy` into shared, `setPublication`, on
   files the dapp itself authored. It does not include reading other
   authors' files; a dapp that wants both requests both.
 
@@ -77,8 +87,11 @@ means:
 ```ts
 { name: string, author?: string, size: number, type: string, cid: string,
   mtime: number, location: "local" | "published",
-  published?: { bzz: string, at: number, verified: boolean } }
+  publications?: { [provider: string]: publication } }
 ```
+
+A `publication` is `{ ref: string, at: number, verified: boolean }` (§8.6);
+`location` is `"published"` when `publications` holds at least one entry.
 
 | method | params | returns | requires | user gesture | rate limit | timeout |
 |---|---|---|---|---|---|---|
@@ -91,7 +104,7 @@ means:
 | `files_delete` | `{ root, name }` | `{}` | as `write` | no | §4.1 | 60 s |
 | `files_rename` | `{ root, from, to }` | `entry` | as `write` | no | §4.1 | 60 s |
 | `files_copy` | `{ from: { root, author?, name }, to: { root, name }, ifNoneMatch? }` | `entry` | read on `from.root`, write on `to.root` | no | §4.1 | 300 s |
-| `files_setPublished` | `{ root, name, bzz }` | `entry` | as `write` | no | §4.1 | 60 s |
+| `files_setPublication` | `{ root, name, provider, ref }` | `entry` | as `write` | no | §4.1 | 60 s |
 | `files_subscribe` | `{ root, prefix?, types?, author? }` | `{ subscriptionId }` | as `list` | no | 60 per document | 60 s |
 | `files_unsubscribe` | `{ subscriptionId }` | `{}` | as `list` | no | §4.1 | 60 s |
 | `files_getQuota` | `{ root }` | §8.2 | `public` | no | §4.1 | 60 s |
@@ -131,9 +144,12 @@ Method rules:
   dapp whoever authored the source, which is no more than the read and the
   write its grants already allow. `ifNoneMatch: "*"` makes it
   create-only.
-- **`files_setPublished`.** Records a Swarm reference on the dapp's own
-  file as dapp-reported (`verified: false`, §8.6). `bzz` MUST be a valid
-  Swarm reference.
+- **`files_setPublication`.** Records a publication by `provider` on the
+  dapp's own file as dapp-reported (`verified: false`, §8.6). `provider`
+  MUST be a provider whose document declares a publication record
+  (`unknown_provider`) and `ref` MUST be valid for it
+  (`invalid_reference`). The record is accepted whether or not that
+  provider is available (`SPEC.md` §12.4): the dapp holds the reference.
 - **`files_subscribe`.** Delivers `files:changed` (§5) for files matching
   the filters and the grant's scope until `files_unsubscribe` or the
   document ends. At most 60 live subscriptions per document.
@@ -148,13 +164,19 @@ source bytes). Over budget rejects `-32005` with `data.retryAfterMs`.
 
 | event | payload | needs |
 |---|---|---|
-| `files:changed` | `{ root, author, name, kind, cid, from?, published? }` | `files:private` for `root: "private"`; `files:read-shared` (scope-narrowed) for `root: "shared"` |
+| `files:changed` | `{ root, author, name, kind, cid, from?, publication? }` | `files:private` for `root: "private"`; `files:read-shared` (scope-narrowed) for `root: "shared"` |
 
 `kind` is one of `created`, `modified`, `deleted`, `renamed` (`from` is the
-old name), `published` (`published` is the new record, §8.6). Events are
-raised for changes made by another tab of the same dapp, by the user in
-`freedom://files`, by another dapp or by Freedom Agent (on `shared`), and by
-the host's publish hook. **An Agent read raises nothing** (§9).
+old name), `published` (`publication` is the new record with its
+`provider` added, §8.6). Events are raised for changes made by another tab
+of the same dapp, by the user in `freedom://files`, by another dapp or by
+Freedom Agent (on `shared`), and by a provider writing a publication
+record. **An Agent read raises nothing** (§9). A subscription survives the
+identity vault's lock: nothing is delivered for a private root while
+locked (nor for either root while sealed) and nothing is replayed on
+unlock; a private folder the user deletes while locked raises no per-file
+events, since its index is unreadable, and the dapp finds it empty after
+unlock. Dapps refresh on `identityChanged` (`SPEC.md` §6.11).
 
 ## 6. Manifest block
 
@@ -210,19 +232,21 @@ Example:
 | code | reason | when |
 |---|---|---|
 | `4100` | `unauthorized` | no grant for the root the call names (never raised for an out-of-scope file: that is `not_found`, N4) |
+| `4100` | `locked` | a call naming `root: "private"` (any root while sealed) other than `files_getQuota`, while the identity vault is locked, after the unlock prompt was dismissed, its dismissal is cached, or the wait ended (`SPEC.md` §6.11) |
 | `4300` | `dapp_quota` | the private 512 MB, or the dapp's shared allowance, would be exceeded (on `shared`, after the storage prompt of §8.8 was declined or could not be shown) |
 | `4300` | `pool_quota` | the shared pool cap would be exceeded |
 | `4300` | `file_too_large` | a single file over the per-file cap for its root |
 | `4300` | `too_many_files` | the private count cap (1 000) would be exceeded |
 | `4409` | `conflict` | `ifMatch` did not match the current CID |
 | `4409` | `exists` | `ifNoneMatch: "*"` on an existing name, or `rename` onto one |
-| `4900` | `store_unavailable` | the data key could not be unwrapped or the store could not be opened |
+| `4900` | `store_unavailable` | the store could not be opened |
 | `-32602` | `invalid_root` | `root` is not `private` or `shared` |
 | `-32602` | `invalid_name` | `name` breaks §8.3 |
 | `-32602` | `invalid_type` | `type` is not a MIME type |
 | `-32602` | `type_mismatch` | declared `type` contradicts the magic bytes (§8.4) |
 | `-32602` | `not_found` | no such file (own file on `private`; any in-scope file on `shared`) |
-| `-32602` | `invalid_reference` | `bzz` in `setPublished` is not a Swarm reference |
+| `-32602` | `unknown_provider` | `provider` in `setPublication` declares no publication record |
+| `-32602` | `invalid_reference` | `ref` in `setPublication` is not valid for `provider` |
 | `-32602` | `invalid_cursor`, `invalid_subscription` | bad `cursor` or `subscriptionId` |
 | `-32602` | `too_many_subscriptions` | a 61st live subscription in one document (§4) |
 | `-32602` | `invalid_json` | `files_readJson` on bytes that do not parse as JSON |
@@ -232,8 +256,8 @@ Example:
 breaks more than one limit the host reports the first in this order:
 `file_too_large`, `too_many_files`, `dapp_quota`, `pool_quota`. The dapp's
 own limits come before the pool's because the dapp can act on them by
-freeing its own files, while the pool cap needs the user (§8.8). No `locked`
-reason exists. Conventions differing from `SPEC.md` §7: none.
+freeing its own files, while the pool cap needs the user (§8.8).
+Conventions differing from `SPEC.md` §7: none.
 
 ## 8. Storage and quota
 
@@ -264,6 +288,9 @@ There is one shared pool per profile. The development realm (`SPEC.md`
 { used, limit /* this dapp's allowance */, free /* min(allowance free, pool free) */,
   fileLimit: 536870912, pool?: { used, limit, free } }
 ```
+
+While the vault is locked or sealed the figures come from the plain
+counters of §8.7, so `used`, `free` and `count` stay current.
 
 The pool's size is an oracle on other dapps', the user's and the Agent's
 adds and deletes (`SPEC.md` §11 N3), so `pool`, and the pool component of
@@ -314,33 +341,48 @@ On every write the host computes a **CIDv1** of the file's bytes
 `ipfs` provider would return unchanged. Swarm references are different
 hashes and are computed only on a Swarm publish.
 
-### 8.6 The `published` record
+### 8.6 Publication records
 
-A file is `location: "published"` when a Swarm reference is recorded on it:
+A file carries at most one **publication record** per provider, under
+`publications.<provider id>`, each `{ ref, at, verified }`: the provider's
+reference to the published bytes, when it was recorded, and who recorded
+it. `location` is `"published"` while any record exists. This is the
+annotation pattern of `SPEC.md` §12.5: Files owns the shape, the event and
+the method; which providers write records, what a valid `ref` is and when
+the host writes one are said in each provider's §9 (in this revision,
+Swarm: `providers/swarm.md` §9.4).
 
-- **Verified.** When a dapp calls `swarm_publishData` (on `window.swarm`,
-  unchanged), the host hashes the payload to a CIDv1 by §8.5 in the main
-  process; if a file of that same dapp, in either root and authored by it,
-  has that CID, the resulting Swarm reference is recorded as
-  `published: { bzz, at, verified: true }` and `files:changed` with
-  `kind: "published"` is emitted. One hash per publish; `window.swarm`'s
-  API is untouched.
-- **Dapp-reported.** For `swarm_publishFiles` bundles, whose single root
-  reference covers many files, the dapp may call `files_setPublished` on
-  its own files; the record carries `verified: false` and `freedom://files`
-  labels it "dapp-reported".
+- **Verified.** The host writes the record itself, in the provider's
+  main-process publish path, when it can match the published bytes to a
+  file of the same dapp (by CID, §8.5), in either root and authored by it.
+  `verified: true`. One such check per publish; the provider's own API is
+  untouched.
+- **Dapp-reported.** The dapp calls `files_setPublication` on its own file
+  (for a bundle whose single reference covers many files, say). The record
+  carries `verified: false` and `freedom://files` labels it
+  "dapp-reported".
+
+Writing a record of either kind emits `files:changed` with
+`kind: "published"` and the record as `publication` with its `provider`.
+A record is replaced, never appended, by a later publication from the same
+provider; `delete` removes the file with its records; `rename` and `copy`
+keep them.
 
 ### 8.7 At rest
 
-Both roots are encrypted under the per-profile data key (wrapped by the OS
-credential store, `SPEC.md` §8.1) with
-authenticated encryption and a per-file nonce, with hashed on-disk names
-and a sidecar index of names, CIDs, types, sizes, authors and `published`
-(`SPEC.md` §8.1). The identity vault's lock never affects them. The data
-is **not** editable in the operating system's file manager; the user's way
-in and out is `freedom://files` (§9.3). *Informative:* under the profile
-directory, `dapp-files/private/<sha256(dappKey)>/` and
-`dapp-files/shared/` (`SPEC.md` Appendix A).
+Each root is encrypted under its own key derived from the identity vault
+(`SPEC.md` §8.1) with authenticated encryption and a per-file nonce, with
+hashed on-disk names and a sidecar index per root, encrypted under the same
+key, of names, CIDs, types, sizes, authors and `publications`. The private key
+leaves memory when the vault locks, so private folders and their indexes are
+unreadable until unlock; plain per-folder byte and file counters keep
+`files_getQuota` and the explorer's usage figures working. The shared key
+stays once derived; before the first unlock of a session neither key exists in
+memory (`SPEC.md` §6.11, sealed). The data is **not** editable in the
+operating system's file manager; the user's way in and out is
+`freedom://files` (`SPEC.md` §10.5). *Informative:* under the profile
+directory, `dapp-files/private/<sha256(dappKey)>/` and `dapp-files/shared/`
+(`SPEC.md` Appendix A).
 
 ### 8.8 Accounting
 
@@ -368,7 +410,10 @@ document like a consent decline (`SPEC.md` §6.6): further over-allowance
 writes reject at once until reload. No prompt when the write would also
 exceed the pool cap (the cap is set in the pane), on `private`, under
 Freedom Agent custody (`SPEC.md` §9.2), or on a call without a user
-gesture in the last 60 s. The dapp needs no new call: it wraps the write
+gesture in the last 60 s. While the identity vault is locked the prompt
+is shown as usual and its accept raises a figure, so the unlock prompt
+follows it (`SPEC.md` §6.11); a dismissed unlock is the same `4300
+dapp_quota` as **Not now**. The dapp needs no new call: it wraps the write
 and treats `4300` as "no room". The prompt is the user setting a figure,
 not a grant: nothing is recorded beyond the new allowance.
 ### 8.9 On revoke
@@ -415,27 +460,14 @@ rows with enabled and revoke.
 
 ### 9.3 `freedom://files`
 
-The files explorer. Usable while the identity vault is locked.
-
-**Shared view.** All dapps' files in one list with an **author** column,
-sortable by **author**, **date added** and **location** (`local` /
-`published`; dapp-reported entries labelled). Actions: **Add files** (an
-operating-system open dialog; the files are added with author `user`,
-subject to §8.3, §8.4 and the pool cap), **Export** (a decrypted copy of
-the selected files to a user-chosen location), **Delete**. The **pool cap**
-and **each dapp's allowance** are shown with their usage and link to where
-they are set (the Dapps pane's **Total dapp storage**, `SPEC.md` §10.2;
-the details page's **Storage**, §9.2). Controls here: the **Freedom Agent**
-controls (§9.4), with the **Agent log** beneath them (every Agent read and
-add, with file, time and the conversation it served; `SPEC.md` §6.12 ring
-buffer and **Clear**).
-
-**Private view.** One folder per added dapp (and per `dev:` dapp under the
-Development heading), showing usage against 512 MB, with **Export** and
-**Delete**. A folder left behind by a signing-key warning (`SPEC.md` §5.7)
-is shown as belonging to the previous build.
-
-There is no reveal-in-Finder on either view.
+The explorer is a core surface (`SPEC.md` §10.5). Files supplies what it
+shows: the shared pool as the shared view and the private folders as the
+private view, with the facts in `entry`, the Agent controls of §9.4 and
+the Agent log. **Add files** adds with author `user` under §8.3, §8.4 and
+the pool cap; **Export** writes a decrypted copy; **Delete** removes the
+file with its publication records (§8.6) and raises `deleted` for its
+readers (§5). Files fills none of the four provider slots: the
+publication column reads the records of §8.6, which other providers write.
 
 ### 9.4 Freedom Agent
 
@@ -474,7 +506,8 @@ touches a private folder.
   treat the shared pool as published. An Agent add is an ordinary change
   for readers in scope.
 - **Log.** Every Agent read and add is logged for the user in the Agent's
-  own log (`SPEC.md` §6.12; shown here, §9.3) with file, time and the
+  own log (`SPEC.md` §6.12; shown in the explorer, `SPEC.md` §10.5) with
+  file, time and the
   conversation it served. Dapps' activity logs never carry Agent entries.
 
 ## 10. Host implementation requirements
@@ -486,8 +519,10 @@ touches a private folder.
    and the user, and MUST narrow every shared read to the grant's scope
    before any result or event leaves the main process.
 3. The host MUST encrypt both roots at rest as `SPEC.md` §8.1 says, with
-   hashed on-disk names, and MUST NOT make the vault's lock state affect
-   any Files call.
+   hashed on-disk names, MUST derive both keys at the first unlock and
+   gate every call while sealed, MUST drop the private key on lock and
+   gate private-root calls as `SPEC.md` §6.11 says, and MUST NOT let a
+   later lock affect any shared-root call or `files_getQuota`.
 4. The host MUST enforce the quotas, per-file caps and count cap of §8.1 on
    every write and copy, and report them through `files_getQuota`.
 5. The host MUST compute the CIDv1 of §8.5 on every write and keep it in
@@ -496,9 +531,11 @@ touches a private folder.
    subscriber under its grant, including changes made by the user, other
    dapps and Freedom Agent, and MUST NOT deliver anything for an Agent
    read.
-7. The host MUST implement the publish hook of §8.6 in its Swarm publish
-   path without changing `window.swarm`'s API.
-8. The host MUST log every write, delete, rename, copy and setPublished to
+7. The host MUST keep publication records as §8.6 says: written with
+   `verified: true` only from a provider's own main-process publish path
+   on a CID match, with `verified: false` from `files_setPublication`,
+   one per provider per file, each emitting `published`.
+8. The host MUST log every write, delete, rename, copy and setPublication to
    the dapp's activity log, and every Agent read and add.
 9. On a tab Freedom Agent holds, the host MUST prompt every Files write
    with its content and refuse a grant-answered write with
@@ -512,9 +549,10 @@ touches a private folder.
 
 *Informative.* In upstream Freedom this is a new `src/main/files/` service
 behind the `dapp:request` dispatcher, `files-grants.json` for the grants,
-a sidecar index per root, the data key wrapped by Electron's `safeStorage`
-(`dapp-files/key.enc`), and a hook in `src/main/swarm/` where `swarm_publishData`
-already receives the bytes.
+a sidecar index per root, the two keys handed over by the vault service
+(`SPEC.md` Appendix A), and the publication-record CID match in
+`src/main/swarm/` where `swarm_publishData` already receives the bytes
+(`providers/swarm.md` §10 item 5).
 
 ## 11. Security considerations and conformance checklist
 
@@ -528,10 +566,12 @@ already receives the bytes.
   the write methods take no `author`, so every write addresses the
   caller's own bucket and another author's name is simply not there
   (`not_found`). The user can do anything from `freedom://files`.
-- **Data at rest.** A copied profile folder or a stolen disk yields
-    ciphertext without the credential store that wraps the data key (§8.7);
-  on a weak store the user is warned (`SPEC.md` §8.1). The private folder is for
-  sensitive data; the fixed 512 MB keeps it small.
+- **Data at rest, and at the running browser.** A copied profile folder or
+  a stolen disk yields ciphertext without the recovery phrase (§8.7). At a
+  running browser, a locked vault leaves private folders unreadable, names
+  included, while the shared pool stays readable by design (`SPEC.md`
+  §6.11). The private folder is for sensitive data; the fixed 512 MB keeps
+  it small.
 - **Agent.** The Agent is a reader and adder of `shared` only under
   explicit off-by-default switches, never of a private folder, undetectably
   to dapps, and always logged (N3a).
@@ -558,9 +598,10 @@ Conformance checklist (`examples/files/`):
 - [ ] `files_stat(...).cid` equals `ipfs add` of the same bytes;
 - [ ] `rename` keeps the CID and emits one `renamed` event; `copy` across
       roots preserves the CID and attributes the copy to the caller;
-- [ ] a `swarm_publishData` of a stored file's bytes sets
-      `published.verified: true` and emits `published`; `setPublished` sets
-      `verified: false`;
+- [ ] a provider's publish of a stored file's bytes sets
+      `publications.<id>.verified: true` and emits `published` (Swarm:
+      `providers/swarm.md` §11); `setPublication` sets `verified: false`,
+      and an unknown `provider` is `unknown_provider`;
 - [ ] a second author's `config.json` does not collide with the first's;
 - [ ] a write naming another author's shared file is `not_found` (the
       write lands in the caller's own bucket or not at all);
@@ -568,7 +609,10 @@ Conformance checklist (`examples/files/`):
       §8.10 including the shared-files question and export offer;
 - [ ] the three consent strings and the disclosure sentence appear
       verbatim;
-- [ ] nothing in Files prompts, needs a user gesture, or fails while the
-      identity vault is locked;
+- [ ] with the vault locked, a private-root call from the fronted tab shows
+      the unlock prompt and completes on unlock, rejects `4100 locked` on
+      dismiss, and never resets the idle timer; shared-root calls and
+      `files_getQuota` are unaffected; `identityChanged` arrives on each
+      change;
 - [ ] an Agent read under its grant raises no event and appears in the
       activity log; an Agent read of a private folder is impossible.

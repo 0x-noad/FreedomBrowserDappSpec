@@ -3,7 +3,7 @@
 The specification for **dapps in Freedom Browser**: static sites served over
 `bzz://`, `ipfs://`, `ipns://` or `web3://` that declare themselves with a
 manifest, get a private folder and a shared folder, and use the user's own
-Swarm and Radicle nodes with consent. specVersion `1`, draft 1 (2026-11-11),
+Swarm and Radicle nodes with consent. specVersion `1`, draft 1 (2026-11-19),
 written against upstream Freedom v0.8.8.
 
 | File | What it is |

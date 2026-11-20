@@ -287,6 +287,36 @@ Things to know:
   `files.write`; to get one out, offer a download. There are no import or
   export methods.
 
+### The identity vault and the lock
+
+Freedom keeps dapp data under the user's **identity**: both folders are
+encrypted with keys derived from their recovery phrase, which is also what
+makes them survive a reinstall. Three consequences for you:
+
+- A user who has not yet created an identity cannot add your dapp. Your
+  first `requestCapabilities` opens Freedom's identity setup for them and
+  then the consent sheet; if they back out you get `4100 no_identity`.
+  Nothing for you to do but show a plain message and try again later.
+- After a browser launch the identity is **sealed** until the user unlocks
+  it once; your first storage call then shows the unlock prompt, in the
+  tab the user is looking at, and completes after it.
+- After a while idle (Freedom's own setting) the identity **locks**, and
+  with it your private folder; the shared folder stays readable. A private
+  read or write from the tab the user is looking at shows the unlock
+  prompt and then completes; from a background tab it waits for an unlock
+  from anywhere and fails with `4100 locked` only if none comes within the
+  timeout. A dismissed prompt is remembered for the page, so a retry loop
+  gets `locked` at once instead of nagging. Listen for `identityChanged`
+  to pause background writes and refresh after unlock, and keep writes
+  small and resumable:
+
+```js
+dapp.on('identityChanged', ({ locked }) => { if (!locked) flushQueue(); });
+const { exists, locked, sealed } = await dapp.getIdentityState();
+```
+
+Your own calls never keep the identity open; only the user's acts do.
+
 ### Publishing to Swarm
 
 `window.swarm` is unchanged. Read a file, pass the bytes:
@@ -296,11 +326,13 @@ const blob = await files.read({ root: 'private', name: 'page.html' });
 const { reference } = await window.swarm.publishData({ data: await blob.arrayBuffer(), contentType: 'text/html' });
 ```
 
-Freedom notices that those bytes were one of your files and marks it
-published, verified, with the reference; `files:changed` fires with
-`kind: 'published'`. For a multi-file `publishFiles` bundle, record the
-reference yourself with `files.setPublished({ root, name, bzz })`; it shows
-as dapp-reported.
+Freedom notices that those bytes were one of your files and records the
+reference on it as `publications.swarm`, verified; `files:changed` fires
+with `kind: 'published'` and the record as `publication`. For a multi-file
+`publishFiles` bundle, record the root reference yourself with
+`files.setPublication({ root, name, provider: 'swarm', ref })`; it shows in
+`freedom://files` as dapp-reported. A future provider that publishes (IPFS,
+say) gets its own key beside `swarm`; your code never has to change for it.
 
 ### Errors
 
@@ -310,7 +342,7 @@ the EIP-1193 ones plus three:
 | code | meaning | typical `data.reason` |
 |---|---|---|
 | `4001` | user rejected | `user_rejected`, `cooldown`, `sheet_busy`, `navigated` |
-| `4100` | not authorized | `unauthorized`, `disabled` (paused), `locked`, `update_pending`, `no_manifest`, `not_in_manifest`, `agent_custody` |
+| `4100` | not authorized | `unauthorized`, `disabled` (paused), `locked`, `no_identity`, `update_pending`, `no_manifest`, `not_in_manifest`, `agent_custody` |
 | `4200` | unknown method | |
 | `4300` | quota | `dapp_quota`, `pool_quota`, `file_too_large`, `too_many_files`; when several apply you get your own limit before the pool's, so free your files first |
 | `4409` | conflict | `conflict`, `exists` |

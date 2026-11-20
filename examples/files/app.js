@@ -174,14 +174,16 @@
         return r;
       });
 
-      await test('files_setPublished records a dapp-reported reference (verified: false)', async () => {
-        const e = await dapp.files.setPublished({ root: 'shared', name: 'shared-check.json', bzz: 'a'.repeat(64) });
-        eq(e.location, 'published', 'location'); eq(e.published.verified, false, 'verified');
-        return `bzz=${e.published.bzz.slice(0, 8)}… at=${e.published.at}`;
+      await test('files_setPublication records a dapp-reported Swarm reference (verified: false)', async () => {
+        const e = await dapp.files.setPublication({ root: 'shared', name: 'shared-check.json', provider: 'swarm', ref: 'a'.repeat(64) });
+        eq(e.location, 'published', 'location'); eq(e.publications.swarm.verified, false, 'verified');
+        return `ref=${e.publications.swarm.ref.slice(0, 8)}… at=${e.publications.swarm.at}`;
       });
 
-      await test('files_setPublished with a bad reference is -32602 invalid_reference', () =>
-        expectError(-32602, 'invalid_reference', () => dapp.files.setPublished({ root: 'shared', name: 'shared-check.json', bzz: 'nope' })));
+      await test('files_setPublication with a bad reference is -32602 invalid_reference', () =>
+        expectError(-32602, 'invalid_reference', () => dapp.files.setPublication({ root: 'shared', name: 'shared-check.json', provider: 'swarm', ref: 'nope' })));
+      await test('files_setPublication for a provider without publication records is -32602 unknown_provider', () =>
+        expectError(-32602, 'unknown_provider', () => dapp.files.setPublication({ root: 'shared', name: 'shared-check.json', provider: 'radicle', ref: 'a'.repeat(64) })));
 
       await test('shared subscribe delivers files:changed for an in-scope write', async () => {
         await dapp.files.subscribe({ root: 'shared', types: ['application/json'] });

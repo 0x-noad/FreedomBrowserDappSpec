@@ -60,7 +60,7 @@
 
     let published = null;
     if (has('swarm:publish') && has('files:private')) {
-      await test('publish hook: swarm_publishData of a stored file’s bytes marks the file published (verified: true)', async () => {
+      await test('publication record: swarm_publishData of a stored file’s bytes writes publications.swarm (verified: true)', async () => {
         const data = `spec-check ${Date.now()}`;
         const w = await dapp.files.write({ root: 'private', name: 'published.txt', data, type: 'text/plain' });
         await dapp.files.subscribe({ root: 'private' });
@@ -68,10 +68,11 @@
         const r = await swarm.publishData({ data, contentType: 'text/plain', name: 'spec-check' });
         published = r;
         const e = await ev;
-        eq(e.published.bzz, r.reference, 'reference recorded on the file');
-        eq(e.published.verified, true, 'verified');
+        eq(e.publication.provider, 'swarm', 'provider');
+        eq(e.publication.ref, r.reference, 'reference recorded on the file');
+        eq(e.publication.verified, true, 'verified');
         const s = await dapp.files.stat({ root: 'private', name: 'published.txt' });
-        eq(s.location, 'published', 'location'); eq(s.cid, w.cid, 'cid unchanged');
+        eq(s.location, 'published', 'location'); eq(s.publications.swarm.ref, r.reference, 'record on stat'); eq(s.cid, w.cid, 'cid unchanged');
         return `bzz://${r.reference.slice(0, 12)}…`;
       });
 

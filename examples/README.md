@@ -9,7 +9,7 @@ the page cannot see those.
 | Folder | Exercises | Needs |
 |---|---|---|
 | `files/` | every `files_*` method, scopes, conditional writes, quota and type errors, change events, relinquish | nothing beyond Freedom |
-| `swarm/` | the four Swarm rows on the unified sheet, publish, feeds, the publish hook that marks a stored file as published | a running Bee node with a usable postage batch |
+| `swarm/` | the four Swarm rows on the unified sheet, publish, feeds, the publication record written on a stored file | a running Bee node with a usable postage batch |
 | `radicle/` | the two Radicle rows, seed records, unseed prompting rules | the Radicle integration enabled; a public RID to seed |
 
 Every example is plain HTML and JavaScript with relative paths, so it can be

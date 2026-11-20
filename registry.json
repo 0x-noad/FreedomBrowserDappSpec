@@ -1,5 +1,5 @@
 {
-  "$comment": "Capability registry for the Freedom Browser Dapp Specification, specVersion 1. Generated from providers/*.md; every capability a host may grant, with its tier, scope schema, the methods it unlocks and its consent-sheet string (SPEC.md §6.1, §12.5). Reserved prefixes carry no capabilities.",
+  "$comment": "Capability registry for the Freedom Browser Dapp Specification, specVersion 1. Generated from providers/*.md; every capability a host may grant, with its tier, scope schema, the methods it unlocks and its consent-sheet string (SPEC.md §6.1, §12.6). Reserved prefixes carry no capabilities.",
   "specVersion": "1",
   "providers": {
     "files": {
@@ -9,7 +9,7 @@
       "version": "1",
       "document": "providers/files.md",
       "schema": "schemas/providers/files.schema.json",
-      "needsIdentityVault": false
+      "needsIdentityVault": true
     },
     "swarm": {
       "displayName": "Swarm",
@@ -44,13 +44,13 @@
       "manifestKey": "private",
       "tier": "consent",
       "alwaysAllow": "not-applicable",
-      "needsIdentityVault": false,
+      "needsIdentityVault": true,
       "scope": null,
       "consentString": "Keep files on this device that only this dapp can open",
       "methods": [
         "files_list", "files_read", "files_stat", "files_readJson",
         "files_write", "files_writeJson", "files_delete", "files_rename",
-        "files_copy", "files_setPublished", "files_subscribe", "files_unsubscribe"
+        "files_copy", "files_setPublication", "files_subscribe", "files_unsubscribe"
       ],
       "methodsNote": "On root \"private\"; files_copy additionally needs the write capability of its destination root.",
       "events": ["files:changed"]
@@ -83,7 +83,7 @@
       "consentString": "Add files to your shared folder",
       "methods": [
         "files_write", "files_writeJson", "files_delete", "files_rename",
-        "files_copy", "files_setPublished"
+        "files_copy", "files_setPublication"
       ],
       "methodsNote": "On root \"shared\", own files only.",
       "events": []
@@ -172,9 +172,9 @@
   "coreMethods": {
     "public": [
       "dapp_requestCapabilities", "dapp_getCapabilities", "dapp_getProviders",
-      "dapp_relinquish", "dapp_getManifest", "dapp_cancelJob", "dapp_fetch"
+      "dapp_relinquish", "dapp_getManifest", "dapp_getIdentityState", "dapp_cancelJob", "dapp_fetch"
     ],
     "note": "dapp_fetch exists on web3:// origins only (SPEC.md §7.14)."
   },
-  "coreEvents": ["capabilitiesChanged", "updatePending", "updateApplied", "providersChanged", "job:progress", "job:done", "job:failed"]
+  "coreEvents": ["capabilitiesChanged", "updatePending", "updateApplied", "providersChanged", "identityChanged", "job:progress", "job:done", "job:failed"]
 }

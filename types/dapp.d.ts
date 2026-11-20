@@ -133,6 +133,16 @@ namespace FreedomDapp {
     pendingVersion?: string;
   }
 
+  /** Result of `dapp_getIdentityState`. SPEC.md §6.11, §7.4. */
+  interface IdentityState {
+    /** false before the host's identity onboarding or after the vault was deleted; a site that is not added always reads true. */
+    exists: boolean;
+    /** While true, private-root Files calls and signing wait for the unlock prompt. */
+    locked: boolean;
+    /** No unlock yet this session: both roots wait for the unlock prompt. Implies `locked`. */
+    sealed: boolean;
+  }
+
   interface FetchResult {
     status: number;
     headers: Record<string, string>;
@@ -147,12 +157,13 @@ namespace FreedomDapp {
 
   type Location = "local" | "published";
 
-  interface Published {
-    /** A Swarm reference. */
-    bzz: string;
+  /** One provider's publication record on a file. providers/files.md §8.6. */
+  interface Publication {
+    /** The provider's reference to the published bytes (Swarm: a 64-hex reference). */
+    ref: string;
     /** ms since epoch. */
     at: number;
-    /** true when the host matched the published bytes to this file; false when the dapp reported it. providers/files.md §8.6. */
+    /** true when the host matched the published bytes to this file; false when the dapp reported it. */
     verified: boolean;
   }
 
@@ -167,7 +178,8 @@ namespace FreedomDapp {
     /** ms since epoch. */
     mtime: number;
     location: Location;
-    published?: Published;
+    /** At most one record per provider id; `location` is "published" while any exists. */
+    publications?: Record<string, Publication>;
   }
 
   /** What `files_write` accepts as `data`. SPEC.md §7.7. */
@@ -252,10 +264,12 @@ namespace FreedomDapp {
     ifNoneMatch?: "*";
   }
 
-  interface SetPublishedParams {
+  interface SetPublicationParams {
     root: Root;
     name: string;
-    bzz: string;
+    /** A provider that declares a publication record (providers/files.md §8.6). */
+    provider: string;
+    ref: string;
   }
 
   interface SubscribeParams {
@@ -320,8 +334,8 @@ namespace FreedomDapp {
     cid: string;
     /** Old name, for `renamed`. */
     from?: string;
-    /** The new record, for `published`. */
-    published?: Published;
+    /** The new record with its provider, for `published`. */
+    publication?: Publication & { provider: string };
   }
 
   // ---------------------------------------------------------------------
@@ -335,6 +349,7 @@ namespace FreedomDapp {
     dapp_relinquish: { params?: { capabilities?: CapabilityId[] }; result: Record<string, never> };
     dapp_getManifest: { params?: undefined; result: ManifestRecord };
     dapp_cancelJob: { params: { jobId: string }; result: Record<string, never> };
+    dapp_getIdentityState: { params?: undefined; result: IdentityState };
     /** web3:// origins only. SPEC.md §7.14. */
     dapp_fetch: { params: { url: string }; result: FetchResult };
 
@@ -347,7 +362,7 @@ namespace FreedomDapp {
     files_delete: { params: DeleteParams; result: Record<string, never> };
     files_rename: { params: RenameParams; result: FileEntry };
     files_copy: { params: CopyParams; result: FileEntry };
-    files_setPublished: { params: SetPublishedParams; result: FileEntry };
+    files_setPublication: { params: SetPublicationParams; result: FileEntry };
     files_subscribe: { params: SubscribeParams; result: SubscribeResult };
     files_unsubscribe: { params: UnsubscribeParams; result: Record<string, never> };
     files_getQuota:
@@ -393,6 +408,8 @@ namespace FreedomDapp {
     updatePending: { fromVersion: string; toVersion: string };
     updateApplied: { version: string };
     providersChanged: Providers;
+    /** The identity vault was created, deleted, unsealed, locked or unlocked; added dapps only. SPEC.md §6.11. */
+    identityChanged: IdentityState;
     "job:progress": JobProgress;
     "job:done": JobDone;
     "job:failed": JobFailed;
@@ -426,6 +443,7 @@ namespace FreedomDapp {
     | "unauthorized"
     | "disabled"
     | "locked"
+    | "no_identity"
     | "update_pending"
     | "no_manifest"
     | "not_in_manifest"
@@ -506,7 +524,7 @@ namespace FreedomDapp {
     delete(params: DeleteParams): Promise<Record<string, never>>;
     rename(params: RenameParams): Promise<FileEntry>;
     copy(params: CopyParams): Promise<FileEntry>;
-    setPublished(params: SetPublishedParams): Promise<FileEntry>;
+    setPublication(params: SetPublicationParams): Promise<FileEntry>;
     subscribe(params: SubscribeParams): Promise<SubscribeResult>;
     unsubscribe(params: UnsubscribeParams): Promise<Record<string, never>>;
     getQuota(params: { root: "private" }): Promise<PrivateQuota>;
@@ -527,6 +545,7 @@ namespace FreedomDapp {
     getProviders(): Promise<Providers>;
     relinquish(params?: { capabilities?: CapabilityId[] }): Promise<Record<string, never>>;
     getManifest(): Promise<ManifestRecord>;
+    getIdentityState(): Promise<IdentityState>;
     cancelJob(params: { jobId: string }): Promise<Record<string, never>>;
     /** Present on web3:// origins only; absent elsewhere. SPEC.md §7.14. */
     fetch?(params: { url: string }): Promise<Response>;

@@ -27,7 +27,7 @@
       }
     },
     "write-shared": {
-      "description": "files:write-shared — add, overwrite, delete, rename, copy into and setPublished on the dapp's own shared files (consent tier).",
+      "description": "files:write-shared — add, overwrite, delete, rename, copy into and setPublication on the dapp's own shared files (consent tier).",
       "type": "object",
       "additionalProperties": false,
       "required": ["why"],
