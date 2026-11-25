@@ -235,13 +235,17 @@ change, patch comment), the RID and the content.
 
 ### 9.2 Details page
 
-Under **Settings**, in **Seeded repositories**: the repos this dapp seeded
-(RID, name, replication state from `radicle_getSeedStatus`) each with
-**Unseed**; in **Capabilities**: the two rows with enabled, always-allow
-and revoke. Nothing under **Info**: the user's identity is not shown here
-(it is the user's, not the dapp's). When the manifest's
-`source` is a Radicle RID (`rad:z…`), the **Info** row for `source` opens the
-host's own repository page (`SPEC.md` §10.4).
+The **Radicle** section (`SPEC.md` §10.4) MUST show:
+
+- **Seeded repositories**: the repos this dapp seeded (RID, name,
+  replication state from `radicle_getSeedStatus`), each with **Unseed**;
+- the capability rows the dapp declares, each with enabled, always-allow
+  and revoke.
+
+The user's Radicle identity is not shown here: it is the user's, not the
+dapp's. When the manifest's `source` is a Radicle RID (`rad:z…`), the
+`source` row of the page's **Dapp** section opens the host's own
+repository page (`SPEC.md` §10.4).
 
 ### 9.3 `freedom://files`
 

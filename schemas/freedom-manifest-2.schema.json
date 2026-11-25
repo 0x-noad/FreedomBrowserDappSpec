@@ -115,6 +115,7 @@
       "description": "One sub-block per provider id (SPEC.md §4.3). Known providers are validated by their own schema; an unknown provider id (including the reserved `ipfs`, `chain` and `ethereum`, which a future revision may define) does not invalidate the manifest and is shown as ungrantable (SPEC.md §4.3, §12.4). Only `dapp`, the core's own prefix, is refused. The `swarm` block is byte-for-byte freedom-manifest/1's.",
       "type": "object",
       "properties": {
+        "safe":    { "$ref": "providers/safe.schema.json" },
         "files":   { "$ref": "providers/files.schema.json" },
         "swarm":   { "$ref": "providers/swarm.schema.json" },
         "radicle": { "$ref": "providers/radicle.schema.json" }

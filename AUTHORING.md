@@ -9,34 +9,36 @@ they win. Types are in `types/dapp.d.ts`; working examples are under
 
 A dapp is a static site, served over `bzz://`, `ipfs://`, `ipns://` or
 `web3://`, that ships a `freedom-manifest.json` and talks to Freedom through
-`window.dapp`. There is no server. Your users' data lives in their browser,
-in a **private folder** only your dapp can open and a **shared folder**
-every dapp they allow can read. Anything you put on a network goes through
+`window.dapp`. There is no server. Your users' data lives in their browser:
+in a **safe**, a small key-value store only your dapp can open and that
+locks with their identity, and in **files**, which sit in their shared
+folder for other dapps to read unless you mark them private. Anything you
+put on a network goes through
 the user's own node (`window.swarm`, `window.radicle`) or wallet
 (`window.ethereum`), with their consent.
 
 Three things follow from "no server" that are worth internalising early:
 
 - **Your identity is where you are served from.** Freedom keys everything
-  (folders, grants, the recorded build) by the **dapp key**: the bare name
-  for a named host (`myapp.eth`, `myapp.wei`, `myapp.gwei`, `myapp.tez`,
-  `myapp.box`), the scheme-qualified reference for a raw address
-  (`bzz://<ref>`, `ipfs://<cid>`), contract plus chain for `web3://`.
-  Nothing in your manifest or your code can change that.
+  (your safe, your files, grants, the recorded build) by the **dapp key**: the
+  bare name for a named host (`myapp.eth`, `myapp.wei`, `myapp.gwei`,
+  `myapp.tez`, `myapp.box`), the scheme-qualified reference for a raw address
+  (`bzz://<ref>`, `ipfs://<cid>`), contract plus chain for `web3://`. Nothing
+  in your manifest or your code can change that.
 - **A raw address never changes.** If you deploy to `ipfs://<cid>` or
   `bzz://<ref>`, the user knows your dapp cannot change under them; that is
   a feature. The cost is in the box below.
 - **A named dapp's builds are tracked.** Freedom records the build it added
   and tells the user when it changes (§6). Give every build a `version`.
 
-> **Warning: deploying to a raw address.** Every redeploy to
-> `ipfs://<cid>` or `bzz://<ref>` is a *different dapp*. The new build has
-> a new key, empty folders, no grants and no activity log, and your users
-> must find it and add it again; nothing carries over, and nothing can,
-> because the address is the identity. Use a name (`myapp.eth`,
-> `myapp.box`, …) or a `web3://` contract for anything whose data or
-> grants must outlive a build. Raw addresses are for one-off builds and
-> for the content a named dapp points at.
+> **Warning: deploying to a raw address.** Every redeploy to `ipfs://<cid>` or
+> `bzz://<ref>` is a *different dapp*. The new build has a new key, an empty
+> safe, no files, no grants and no activity log, and your users must find it
+> and add it again; nothing carries over, and nothing can, because the address
+> is the identity. Use a name (`myapp.eth`, `myapp.box`, …) or a `web3://`
+> contract for anything whose data or grants must outlive a build. Raw
+> addresses are for one-off builds and for the content a named dapp points at.
+
 ## 2. The manifest
 
 Put `freedom-manifest.json` at the root of your site. Nothing else is
@@ -50,10 +52,12 @@ checked; `/.well-known/` is not.
   "icon": "./icon.png",
   "version": "1.4.0",
   "capabilities": {
+    "safe": {
+      "store": { "why": "Keeps your settings and sign-in on this device." }
+    },
     "files": {
-      "private":      { "why": "Keeps your notes on this device." },
-      "read-shared":  { "why": "Imports images other dapps shared." },
-      "write-shared": { "why": "Shares the notes you export." }
+      "own":  { "why": "Stores your notes and shares the ones you export." },
+      "read": { "why": "Imports images other dapps shared." }
     },
     "swarm": {
       "publish": { "why": "Publishes a note as a page when you ask." }
@@ -106,7 +110,7 @@ form is ignored. `web3://` pages cannot `fetch()`; on those origins only,
 `web3://` URLs through Freedom's own verified handlers and resolves a
 `Response`. It is absent everywhere else, where `fetch()` already works.
 
-### Signing (recommended)
+### Signing (do it from your first release)
 
 Add `publicKey` (Ed25519, multibase `z…`) and `signature` (over the RFC 8785
 canonical JSON of the manifest without `signature`). Freedom shows "signed" on
@@ -115,6 +119,12 @@ by their author. An unsigned dapp carries the warning "This dapp is not signed
 by its author." on the sheet, on the details page and on every update notice.
 If a name you own is ever lost or sold, the new owner's builds will fail that
 check and users will be warned and asked to re-add from scratch.
+
+**Sign before anyone adds your dapp.** Adding a signature later counts as
+a signing change too: every user is asked to re-add, and the re-added dapp
+starts **empty**, with no way to give it back the safe and private files
+of the unsigned build (§6). An unsigned dapp can stay unsigned without
+that cost, but then nothing tells your users a new build is yours.
 
 **Rotating your key** is safe if the old key endorses the new one. Sign
 the first build under the new key with `--rotate-from old.key`: the
@@ -149,30 +159,44 @@ swap it, so keep the tool, not the maths, in your build.
 
 | id | tier | what it unlocks |
 |---|---|---|
-| `files:private` | consent | read and write your private folder (512 MB, 64 MB per file, 1 000 files; for sensitive data) |
-| `files:read-shared` | consent | read every file in the shared folder, listing it by file type (never all at once) |
-| `files:write-shared` | consent | add, overwrite, delete and rename **your own** files in the shared folder (default 1 GB of an 8 GB pool; the user can raise either, to 8 GB and 32 GB; 512 MB per file) |
+| `safe:store` | consent | your own key-value **safe**: JSON or bytes under keys you choose, 64 MB in all, 8 MB per value, 1 000 keys; locked whenever the user's identity is |
+| `files:own` | consent | store, read, mark, rename and delete **your own** files (default 1 GB of an 8 GB pool; the user can raise either, to 8 GB and 32 GB; 512 MB per file). They are in the user's shared folder unless you mark them private |
+| `files:read` | consent | read the files **other dapps shared**, listing them by file type (never all at once) |
 | `swarm:publish`, `swarm:feeds`, `swarm:signing`, `swarm:messaging` | per-call | the shipped `window.swarm` tiers; each use prompts unless the user set always-allow |
 | `radicle:node`, `radicle:signing` | per-call | the shipped `window.radicle` tiers |
 
 **Consent** means the user is asked once, when they add your dapp, and never
 again for that capability. **Per-call** means every use prompts unless the
-user chose always-allow on the sheet or the details page. Files never
-prompts per call: nothing leaves the device.
+user chose always-allow on the sheet or the details page. The safe and
+files never prompt per call: nothing leaves the device.
 
 The wallet is not a capability. Call `eth_requestAccounts` as you would on
 any site; the user sees the wallet's own prompt. Signatures and transactions
 always go through the wallet's approvals.
 
-### What the shared folder means
+### Where your data goes
 
-Read this before declaring `files:read-shared` or `files:write-shared`.
-The consent sheet tells the user, in these words: **"Everything in your
-shared folder, including which dapp added each file, is visible to every
-dapp you allow to read it."** Treat anything you put there as published, and
-expect to see other dapps' files when you read. Author-filtered reads are
-there so you can find your own files or a partner dapp's; they are not a
-privacy boundary.
+Three places, by what the data is:
+
+- **The safe**, for what must stay secret: sign-in tokens, keys, settings,
+  a profile, a save state. Small on purpose. Nobody but your dapp and the
+  user reads it, Freedom Agent never does, and it is unreadable whenever
+  the user's identity is locked.
+- **A private file**, for bulk data that is only yours: drafts, caches,
+  working copies. No other dapp and no Agent tool can see it. The mark is
+  access control, not a lock: the user sees the file in `freedom://files`,
+  and it stays readable to your dapp while the identity is locked. Do not
+  put secrets there.
+- **A shared file**, the default, for everything else: documents, media,
+  anything another dapp might use. The consent sheet tells the user, in
+  these words, under your `files:own` row: **"Files this dapp stores go in
+  your shared folder, where dapps you allow can read them, unless the dapp
+  marks them private."** And under any `files:read` row: **"Everything in
+  your shared folder, including which dapp added each file, is visible to
+  every dapp you allow to read it."** Treat a shared file as published.
+
+Marking a shared file private later stops further reads; it does not
+recall what another dapp already read.
 
 ## 4. Talking to Freedom
 
@@ -180,7 +204,12 @@ privacy boundary.
 if (!window.dapp) {
   // Not a dapp page (wrong scheme, iframe, worker, private window), or a
   // host without the spec. Degrade: your page still works as a plain site.
+  showPlainSite();
+} else {
+  startDapp();
 }
+
+// inside startDapp():
 const { specVersion } = window.dapp;            // "1"
 const providers = await window.dapp.getProviders();
 ```
@@ -194,8 +223,9 @@ Ask for what you need when you need it, behind a button if you like:
 ```js
 const grant = await window.dapp.requestCapabilities({
   capabilities: [
-    { id: 'files:private' },
-    { id: 'files:read-shared' },
+    { id: 'safe:store' },
+    { id: 'files:own' },
+    { id: 'files:read' },   // only if you read what other dapps shared
   ],
 });
 ```
@@ -213,18 +243,19 @@ const missing = wanted.filter((w) => !held.capabilities.some((h) => h.id === w.i
 if (missing.length) await window.dapp.requestCapabilities({ capabilities: wanted });
 ```
 
-**The shared folder is read by type.** The read grant covers every file in the
-user's shared folder, whoever added it, and the consent row says so. What
-bounds you is the query: a shared `list` or `subscribe` must name the MIME
+**Other dapps' files are read by type.** `files:read` covers every shared
+file, whoever added it, and the consent row says so. What bounds you is the
+query: a `list` or `subscribe` beyond your own files must name the MIME
 types you want, exact (`image/png`) or one family at a time (`image/*`);
-asking for nothing, or for `*/*`, is `-32602 types_required`. Only the user's
-own `freedom://files` lists everything; your **own** shared files are the
-exception: `files.list({ root: 'shared', author: 'self' })` lists them whole.
+asking for nothing, or for `*/*`, is `-32602 types_required`. Only the
+user's own `freedom://files` lists everything. Your **own** files are the
+exception: `files.list({ author: 'self' })` lists them whole, both marks.
 Add `author` to narrow a type query to one dapp's files, and `prefix` or
 `suffix` to narrow by name. Give your own file kinds a specific type
 (`application/vnd.myapp.state+json`) so they list in one call; reach for
-`suffix: '.state'` under a broad type only for files whose writer did not. A
-file you already know by `{ author, name }` reads directly, whatever its type.
+`suffix: '.state'` under a broad type only for files whose writer did not.
+A shared file you already know by `{ author, name }` reads directly,
+whatever its type; another dapp's private file is simply `not_found`.
 
 - A decline is `4001` and is cached for the document: do not re-prompt in a
   loop; tell the user they can reopen the sheet from the `d` in the address
@@ -233,90 +264,142 @@ file you already know by `{ author, name }` reads directly, whatever its type.
   any time from the details page.
 
 Every method is reachable as `window.dapp.request({ method, params })` or
-as sugar, `window.dapp.files.read(...)`. The sugar converts bytes for you:
-reads give you a `Blob`, writes take a string, `Uint8Array`, `ArrayBuffer`
-or `Blob`.
+as sugar, `window.dapp.files.read(...)`, `window.dapp.safe.get(...)`. The
+Files sugar converts bytes for you: reads give you a `Blob`, writes take a
+string, `Uint8Array`, `ArrayBuffer` or `Blob`. The safe is different on two
+points: a string you store is a JSON string, not bytes, and bytes come
+back as a `Uint8Array`.
+
+### The safe in practice
+
+```js
+const safe = window.dapp.safe;
+
+await safe.set({ key: 'settings', value: { theme: 'dark', lang: 'en' } });   // any JSON value
+await safe.set({ key: 'saves/slot1', value: sramBytes });                     // or bytes
+const item = await safe.get({ key: 'settings' });        // { value, kind, etag, size, mtime } or null
+const settings = item?.kind === 'json' ? item.value : { theme: 'light' };
+
+// Optimistic concurrency with the etag
+if (item) await safe.set({ key: 'settings', value: next(settings), ifMatch: item.etag });   // 4409 conflict if changed
+
+// Group with prefixes; listing returns keys and sizes, never values
+const { items } = await safe.keys({ prefix: 'saves/' });
+await safe.delete({ key: 'saves/slot1' });
+```
+
+Things to know:
+
+- A key is 1–128 characters from letters, digits and `. _ : / -`. The
+  store is flat; `/` is just a character you can group by.
+- 64 MB in all, 8 MB per value, 1 000 keys, fixed. Over them is `4300`
+  with `value_too_large`, `too_many_keys` or `safe_quota`.
+- **Every safe call needs the identity unlocked** (next section). Keep
+  what you need for rendering in memory after you read it.
+- The user can see your keys and their sizes on your details page, delete
+  them and export them. They cannot read values there; do not rely on
+  that as secrecy from the user, who can export.
+- A value is what `JSON.stringify` makes of it: `undefined` members and
+  functions vanish, a `Date` becomes a string, and something it cannot
+  serialise is `-32602 invalid_value`. Bytes go in as a `Uint8Array`,
+  `ArrayBuffer` or `Blob`.
+- On a tab Freedom Agent is driving, the user is warned before your first
+  safe read, because the Agent can see what you then display; if they
+  decline you get `4100 agent_custody` for as long as the Agent holds the
+  tab. Show a plain "not available while Freedom Agent is in control"
+  state.
 
 ### Files in practice
 
 ```js
 const files = window.dapp.files;
 
-await files.write({ root: 'private', name: 'notes.json', data: JSON.stringify(notes), type: 'application/json' });
-const blob = await files.read({ root: 'private', name: 'cover.png' });   // Blob, type image/png
+const { author: me } = await files.write({ name: 'notes.md', data: text, type: 'text/markdown' });   // shared by default; `me` is your dapp key
+await files.write({ name: 'draft.md', data: text, type: 'text/markdown', visibility: 'private' });
+const blob = await files.read({ name: 'cover.png' });   // your own file: Blob, type image/png
 img.src = URL.createObjectURL(blob);
 
 // Optimistic concurrency with the CID as etag
-const { value, cid } = await files.readJson({ root: 'private', name: 'doc.json' });
-await files.writeJson({ root: 'private', name: 'doc.json', value: next(value), ifMatch: cid }); // 4409 conflict if changed
+const { value, cid } = await files.readJson({ name: 'doc.json' });
+await files.writeJson({ name: 'doc.json', value: next(value), ifMatch: cid }); // 4409 conflict if changed
 
-// Shared folder: your files are addressed by { author, name }; others' by their author
-const { items } = await files.list({ root: 'shared', types: ['image/*'] });
-await files.copy({ from: { root: 'private', name: 'cover.png' }, to: { root: 'shared', name: 'cover.png' } });
+// Publish a draft to other dapps, or withdraw it
+await files.setVisibility({ name: 'draft.md', visibility: 'shared' });
+
+// Shared files by type (needs files:read): everyone's, your own shared ones included
+const { items } = await files.list({ types: ['image/*'] });
+const theirs = items.find((f) => f.author !== me);        // me: the author on any file you wrote
+if (theirs) await files.copy({ from: { author: theirs.author, name: theirs.name }, to: { name: 'imported.png' } });
 
 // Stay in sync across tabs and with the user's own edits in freedom://files
-await files.subscribe({ root: 'private' });
-window.dapp.on('files:changed', (e) => { if (e.name === 'notes.json') reload(); });
+await files.subscribe({ author: 'self' });
+// Fires for every tab's changes, this one's included: compare the cid before reloading.
+window.dapp.on('files:changed', (e) => { if (e.name === 'notes.md' && e.cid !== current.cid) reload(); });
 ```
 
 Things to know:
 
-- Folders are **flat** and a name may not contain `/`. Encode hierarchy in
+- The pool is **flat** and a name may not contain `/`. Encode hierarchy in
   names some other way (`photos.2026.01.jpg`, `photos--2026--01.jpg`).
-  Names are exact and case-sensitive.
+  Names are exact and case-sensitive. Your names never collide with
+  another dapp's: a file is `{ author, name }`.
+- **A new file is shared unless you say `visibility: 'private'`.** An
+  overwrite keeps the file's mark. A copy of your own file keeps its
+  source's mark; a copy of another dapp's shared file is shared unless
+  you say otherwise. Copies never carry publication records.
+- **On a tab Freedom Agent is driving, nothing you write is silent.**
+  Every write, to files or the safe, is shown to the user first and fails
+  with `4100 agent_custody` if they decline. Show it as a state; do not
+  retry in a loop. Decide per file; when in doubt for
+  something only your dapp uses, mark it private.
 - Declare a real `type`. Freedom sniffs images, audio, video, PDF, archives
   and fonts and rejects a declaration that contradicts the bytes.
 - Every file has a CIDv1 of its bytes, the same CID `ipfs add` would give.
   Use it as an etag and as a stable id you can hand to other dapps.
-- **Default to the shared folder.** The private folder is for small
-  sensitive things: key-value state, a profile or settings JSON, tokens. It
-  is flat (no folders, hierarchy goes in names), 512 MB and 1 000 files,
-  small on purpose. Documents, media, anything bulky and anything another
-  dapp might want go in the shared folder, under your own author, or on
-  Swarm.
-- **Quotas are the user's**, never a manifest's. A shared write that needs
-  more room than your allowance asks the user for you, in the Dapps pane,
-  while your call waits (up to 300 s): you get the normal result if they
-  raise it, or `4300 dapp_quota` if they decline, as if nothing had been
-  asked. Wrap writes in try/catch and treat `4300` as "no room"; never
-  retry it in a loop, a decline is remembered until reload. The prompt
-  needs a recent user gesture, so save on the user's action, not on a timer.
-  `files.getQuota({ root })` tells you where you stand.
+- **Quotas are the user's**, never a manifest's. Your allowance covers all
+  your files, both marks. A write that needs more room than your allowance
+  asks the user for you, in the Dapps pane, while your call waits (up to 300
+  s): you get the normal result if they raise it, or `4300 dapp_quota` if they
+  decline, as if nothing had been asked. Wrap writes in try/catch and treat
+  `4300` as "no room"; never retry it in a loop, a decline is remembered until
+  reload. The prompt needs a recent user gesture, so save on the user's
+  action, not on a timer. `files.getQuota()` tells you where you stand.
 - **Rate limits** are per dapp key, so every open tab of your dapp shares
-  one budget: 600 Files calls and 512 MB read per minute. Over it is
-  `-32005` with `retryAfterMs`; wait that long, do not retry in a loop.
-  Save state once per change, not per keystroke; one `files.list` with a
-  `prefix` beats a `stat` per file; read a file once and keep it in memory.
+  one budget: 600 Files calls and 512 MB read per minute, and 600 safe
+  calls. Over it is `-32005` with `retryAfterMs`; wait that long, do not
+  retry in a loop. Save state once per change, not per keystroke; one
+  `files.list` with a `prefix` beats a `stat` per file; read a file once
+  and keep it in memory.
 - To get a file in from the user's disk, use `<input type="file">` and
   `files.write`; to get one out, offer a download. There are no import or
   export methods.
 
 ### The identity vault and the lock
 
-Freedom keeps dapp data under the user's **identity**: both folders are
-encrypted with keys derived from their recovery phrase, which is also what
-makes them survive a reinstall. Three consequences for you:
+Freedom keeps dapp data under the user's **identity**: the safe and the
+files are encrypted with keys derived from their recovery phrase, which is
+also what makes them survive a reinstall. Three consequences for you:
 
 - A user who has not yet created an identity cannot add your dapp. Your
   first `requestCapabilities` opens Freedom's identity setup for them and
   then the consent sheet; if they back out you get `4100 no_identity`.
   Nothing for you to do but show a plain message and try again later.
 - After a browser launch the identity is **sealed** until the user unlocks
-  it once; your first storage call then shows the unlock prompt, in the
-  tab the user is looking at, and completes after it.
+  it once; your first safe or files call then shows the unlock prompt, in
+  the tab the user is looking at, and completes after it.
 - After a while idle (Freedom's own setting) the identity **locks**, and
-  with it your private folder; the shared folder stays readable. A private
-  read or write from the tab the user is looking at shows the unlock
-  prompt and then completes; from a background tab it waits for an unlock
-  from anywhere and fails with `4100 locked` only if none comes within the
+  with it your **safe**. Your files stay readable, private ones included.
+  A safe call from the tab the user is looking at shows the unlock prompt
+  and then completes; from a background tab it waits for an unlock from
+  anywhere and fails with `4100 locked` only if none comes within the
   timeout. A dismissed prompt is remembered for the page, so a retry loop
   gets `locked` at once instead of nagging. Listen for `identityChanged`
-  to pause background writes and refresh after unlock, and keep writes
-  small and resumable:
+  to pause background writes and refresh after unlock, and keep safe
+  writes small and resumable:
 
 ```js
-dapp.on('identityChanged', ({ locked }) => { if (!locked) flushQueue(); });
-const { exists, locked, sealed } = await dapp.getIdentityState();
+window.dapp.on('identityChanged', ({ locked }) => { if (!locked) flushQueue(); });
+const { exists, locked, sealed } = await window.dapp.getIdentityState();
 ```
 
 Your own calls never keep the identity open; only the user's acts do.
@@ -326,7 +409,7 @@ Your own calls never keep the identity open; only the user's acts do.
 `window.swarm` is unchanged. Read a file, pass the bytes:
 
 ```js
-const blob = await files.read({ root: 'private', name: 'page.html' });
+const blob = await files.read({ name: 'page.html' });
 const { reference } = await window.swarm.publishData({ data: await blob.arrayBuffer(), contentType: 'text/html' });
 ```
 
@@ -334,7 +417,7 @@ Freedom notices that those bytes were one of your files and records the
 reference on it as `publications.swarm`, verified; `files:changed` fires
 with `kind: 'published'` and the record as `publication`. For a multi-file
 `publishFiles` bundle, record the root reference yourself with
-`files.setPublication({ root, name, provider: 'swarm', ref })`; it shows in
+`files.setPublication({ name, provider: 'swarm', ref })`; it shows in
 `freedom://files` as dapp-reported. A future provider that publishes (IPFS,
 say) gets its own key beside `swarm`; your code never has to change for it.
 
@@ -348,10 +431,10 @@ the EIP-1193 ones plus three:
 | `4001` | user rejected | `user_rejected`, `cooldown`, `sheet_busy`, `navigated` |
 | `4100` | not authorized | `unauthorized`, `disabled` (paused), `locked`, `no_identity`, `update_pending`, `no_manifest`, `not_in_manifest`, `agent_custody` |
 | `4200` | unknown method | |
-| `4300` | quota | `dapp_quota`, `pool_quota`, `file_too_large`, `too_many_files`; when several apply you get your own limit before the pool's, so free your files first |
+| `4300` | quota | files: `file_too_large`, `dapp_quota`, `pool_quota` (your own limit comes before the pool's, so free your files first); safe: `value_too_large`, `too_many_keys`, `safe_quota` |
 | `4409` | conflict | `conflict`, `exists` |
 | `4900` | provider unavailable | node down, store unavailable |
-| `-32602` | invalid params | `invalid_name`, `type_mismatch`, `not_found`, `invalid_json`, … |
+| `-32602` | invalid params | `invalid_name`, `invalid_key`, `type_mismatch`, `types_required`, `not_found`, `invalid_json`, … |
 | `-32005` | rate limited | `retryAfterMs` |
 | `-32603` | internal | `timeout`, `disk_full`, `io_error` |
 
@@ -366,8 +449,8 @@ bottom of Freedom's Dapps pane (sidebar). Then serve your build at
 `http://notebook.localhost:8767/`. Freedom treats it as a dapp with the key
 `dev:notebook:8767` (the port is part of the key: any local server can
 answer for any `*.localhost` name, so a server on another port is another
-dapp), with its own private folder and its own shared folder,
-walled off from production. There is no build check; instead Freedom
+dapp), with its own safe and files of its own in a separate development
+pool, walled off from production. There is no build check; instead Freedom
 watches the manifest itself and shows the update notice when it changes,
 so edits to your capabilities reach the sheet. Everything else behaves as
 in production: the manifest, the sheet, prompts, limits. If you serve
@@ -376,7 +459,7 @@ that for one folder per label. Bare `localhost`,
 IP addresses and `https` are refused. Dev dapps sit under a Development
 heading on every page and can be wiped in one action.
 
-`examples/` has three runnable fixtures you can copy from.
+`examples/` has four runnable fixtures you can copy from.
 
 ## 6. Shipping, updating, and what the user sees
 
@@ -393,7 +476,8 @@ reference changed and shows an **update notice** before the new build may
 use anything: old and new `version`, any new capabilities (unticked; the
 user ticks them), and whether the signing key is the same. Until the user
 approves, every call beyond the public tier (discovery, `getCapabilities`,
-`getManifest`, `files.getQuota`) rejects `4100 update_pending`. Handle it: show
+`getManifest`, `safe.getQuota`, `files.getQuota`) rejects `4100
+update_pending`. Handle it: show
 "update waiting for approval" rather than an error. `updatePending` and
 `updateApplied` events tell you when, and `getManifest().pending` says which
 notice is waiting (`update`, `missing`, `invalid` or `key-change`).
@@ -406,16 +490,22 @@ Rules of the update:
   name, the description or the icon needs no re-consent.
 - A build with a missing or invalid manifest blocks everything beyond the
   public tier until a valid one is back. Lint before deploying.
-- Changing the signing key, or going from signed to unsigned, withdraws
-  every grant and asks the user to re-add from scratch. Do not do it by
-  accident.
+- Changing the signing key without a rotation, going from signed to
+  unsigned, or adding a first signature to an unsigned dapp withdraws
+  every grant and asks the user to re-add from
+  scratch, and the re-added dapp starts **empty**: the previous build's
+  safe and private files are never handed over (the user keeps them, to
+  export or delete), and its shared files become the user's. Rotate
+  properly (§2) and keep your key safe; there is no way back.
 
 **What the user can do at any time** from `freedom://dapps` and your
 details page: pause a capability or the whole dapp (`4100 disabled`),
-revoke, see every file you stored, every publish and feed, an activity log
-of your writes, and remove your dapp. Removal deletes the private folder
-(after offering an export) and asks whether to remove your shared files
-too. Design for data the user controls: never assume a file is still there.
+revoke, see every file you stored (private ones too) and the keys in your
+safe, delete or export any of it, see every publish and feed and an
+activity log of your writes, and remove your dapp. Removal deletes your
+safe and your private files (after offering an export) and asks whether to
+remove your shared files too. Design for data the user controls: never
+assume a file or a key is still there.
 
 ## 7. Checklist before you publish
 
@@ -426,5 +516,5 @@ too. Design for data the user controls: never assume a file is still there.
 - [ ] the page works with `window.dapp` undefined and before any grant
 - [ ] `getCapabilities` is checked before `requestCapabilities`
 - [ ] `4001` is not retried in a loop; `4100 update_pending` and `disabled` are shown as states, not errors
-- [ ] nothing sensitive is written to the shared folder
+- [ ] secrets are in the safe, not in files; files only your dapp needs are marked private
 - [ ] signed, and the key is stored somewhere you will still have it next release

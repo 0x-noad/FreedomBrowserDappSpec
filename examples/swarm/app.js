@@ -15,11 +15,11 @@
     $('#connect').disabled = false; $('#run').disabled = false;
   }
 
-  const WANT = [{ id: 'files:private' }, { id: 'swarm:publish' }, { id: 'swarm:feeds' }, { id: 'swarm:signing' }, { id: 'swarm:messaging' }];
+  const WANT = [{ id: 'files:own' }, { id: 'swarm:publish' }, { id: 'swarm:feeds' }, { id: 'swarm:signing' }, { id: 'swarm:messaging' }];
 
   $('#connect').onclick = async () => {
     clear();
-    await test('dapp_requestCapabilities with files:private and the four Swarm rows', async () => {
+    await test('dapp_requestCapabilities with files:own and the four Swarm rows', async () => {
       const g = await dapp.requestCapabilities({ capabilities: WANT });
       const ids = g.capabilities.map((c) => c.id).sort();
       return `granted: ${ids.join(', ')}; alwaysAllow: ${g.capabilities.filter((c) => c.alwaysAllow).map((c) => c.id).join(', ') || 'none'}`;
@@ -59,11 +59,11 @@
     });
 
     let published = null;
-    if (has('swarm:publish') && has('files:private')) {
+    if (has('swarm:publish') && has('files:own')) {
       await test('publication record: swarm_publishData of a stored file’s bytes writes publications.swarm (verified: true)', async () => {
         const data = `spec-check ${Date.now()}`;
-        const w = await dapp.files.write({ root: 'private', name: 'published.txt', data, type: 'text/plain' });
-        await dapp.files.subscribe({ root: 'private' });
+        const w = await dapp.files.write({ name: 'published.txt', data, type: 'text/plain', visibility: 'private' });
+        if (!window.__filesSelfSub) window.__filesSelfSub = (await dapp.files.subscribe({ author: 'self' })).subscriptionId;
         const ev = once(dapp, 'files:changed', (e) => e.kind === 'published' && e.name === 'published.txt', 300000);
         const r = await swarm.publishData({ data, contentType: 'text/plain', name: 'spec-check' });
         published = r;
@@ -71,7 +71,7 @@
         eq(e.publication.provider, 'swarm', 'provider');
         eq(e.publication.ref, r.reference, 'reference recorded on the file');
         eq(e.publication.verified, true, 'verified');
-        const s = await dapp.files.stat({ root: 'private', name: 'published.txt' });
+        const s = await dapp.files.stat({ name: 'published.txt' });
         eq(s.location, 'published', 'location'); eq(s.publications.swarm.ref, r.reference, 'record on stat'); eq(s.cid, w.cid, 'cid unchanged');
         return `bzz://${r.reference.slice(0, 12)}…`;
       });

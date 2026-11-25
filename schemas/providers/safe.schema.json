@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedom.example/schemas/providers/safe.schema.json",
+  "title": "capabilities.safe",
+  "description": "The `safe` provider's block of a freedom-manifest/2 `capabilities` object. See providers/safe.md §6.",
+  "type": "object",
+  "minProperties": 1,
+  "additionalProperties": false,
+  "properties": {
+    "store": {
+      "description": "safe:store — read and write the dapp's own key-value safe, locked with the user's identity (consent tier).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["why"],
+      "properties": {
+        "why": { "$ref": "#/$defs/why" }
+      }
+    }
+  },
+  "$defs": {
+    "why": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 140
+    }
+  }
+}

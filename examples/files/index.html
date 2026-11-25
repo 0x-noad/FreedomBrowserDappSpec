@@ -21,7 +21,7 @@
     <div class="row">
       <button id="connect" disabled>Request capabilities</button>
       <button id="run" disabled>Run</button>
-      <button id="slow" disabled title="Writes a 65 MB file to check file_too_large; takes a while">Run slow checks</button>
+      <button id="slow" disabled title="Builds a 513 MB buffer to check file_too_large, then spends the minute’s call budget to check the rate limit; needs memory and leaves the dapp rate-limited for a minute">Run slow checks</button>
       <button id="relinquish" disabled>Relinquish</button>
     </div>
     <p id="summary" class="muted"></p>
@@ -37,13 +37,15 @@
   <section class="card">
     <h2>Manual checks</h2>
     <ol class="manual">
-      <li>The consent sheet showed three Files rows, the <code>read-shared</code> row carried the disclosure sentence verbatim with no scope line, and no row had an always-allow toggle.</li>
+      <li>The consent sheet showed two Files rows; the <code>own</code> row carried the line about files going to the shared folder unless marked private, the <code>read</code> row carried the disclosure sentence, both verbatim; neither had a scope line or an always-allow toggle.</li>
       <li>The header named the dapp key (not “Files check”) with the icon and name beneath it.</li>
-      <li><code>freedom://dapps</code> shows this dapp’s tile; its details page shows private usage of 512 MB, shared usage of the allowance, and three capability rows with enabled and revoke.</li>
-      <li><code>freedom://files</code> shows <code>shared-check.json</code> under this dapp’s key in the author column while the run holds it, sortable by author, date added and location.</li>
+      <li><code>freedom://dapps</code> shows this dapp’s tile; its details page has a <b>Dapp</b> section, then a <b>Files</b> section with usage of the allowance split into shared and private, the allowance control, a link into the explorer and two capability rows with enabled and revoke.</li>
+      <li><code>freedom://files</code> shows this dapp’s files under its key in the author column, with a visibility column; <code>draft.txt</code> (kept after a run) is listed as private and the user can export, delete and re-mark it.</li>
       <li>Pausing a capability on the details page makes the matching calls fail with <code>4100 disabled</code>; resuming restores them without a sheet.</li>
-      <li>With the identity vault locked, pressing <b>Run</b> again shows the unlock prompt on the first private call and the run completes after unlock; the shared rows never waited. A private call made after the next lock does not postpone the lock after that.</li>
-      <li>Removing the dapp asks about the bytes used, offers an export, and asks whether to remove its shared files with <i>keep</i> selected.</li>
+      <li>With the identity vault locked after one unlock, pressing <b>Run</b> again never shows the unlock prompt: no Files call waits, private files included. After a browser restart (sealed), the first Files call shows the unlock prompt and completes after it.</li>
+      <li>From a second dapp holding <code>files:read</code>: <code>draft.txt</code> is <code>not_found</code> and in no listing; <code>shared-check.txt</code> (kept after a run) reads there by <code>{ author, name }</code> and its copy there is shared; marking it private in <code>freedom://files</code> raises <code>deleted</code> there and <code>visibility</code> here.</li>
+      <li>On a tab Freedom Agent holds, every write of a run shows a prompt with its content; <b>Don’t allow</b> fails it with <code>4100 agent_custody</code>, and nothing is written silently under the grant.</li>
+      <li>Removing the dapp names its files by mark, offers an export, deletes the private ones and asks whether to remove the shared ones with <i>keep</i> selected.</li>
     </ol>
   </section>
 

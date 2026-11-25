@@ -2,7 +2,8 @@
 
 The specification for **dapps in Freedom Browser**: static sites served over
 `bzz://`, `ipfs://`, `ipns://` or `web3://` that declare themselves with a
-manifest, get a private folder and a shared folder, and use the user's own
+manifest, get a safe and a place for files, private or shared, and use the
+user's own
 Swarm and Radicle nodes with consent. specVersion `1`, draft 1 (2026-11-19),
 written against upstream Freedom v0.8.8.
 
@@ -10,7 +11,8 @@ written against upstream Freedom v0.8.8.
 |---|---|
 | [`SPEC.md`](SPEC.md) | the **core**: identity, manifest, updates, capabilities and grants, `window.dapp`, conventions, surfaces, security rules, the provider model |
 | [`providers/TEMPLATE.md`](providers/TEMPLATE.md) | the fixed eleven-section template every provider document follows |
-| [`providers/files.md`](providers/files.md) | the Files provider: private folder, shared pool, thirteen methods, the Freedom Agent controls, `freedom://files` |
+| [`providers/safe.md`](providers/safe.md) | the Safe provider: a per-dapp key-value store locked with the user's identity, seven methods |
+| [`providers/files.md`](providers/files.md) | the Files provider: one pool of files, each marked shared or private, fourteen methods, the Freedom Agent controls, `freedom://files` |
 | [`providers/swarm.md`](providers/swarm.md) | `window.swarm` as shipped, plus its integration points |
 | [`providers/radicle.md`](providers/radicle.md) | `window.radicle` as shipped, plus its integration points and seed records |
 | [`schemas/`](schemas/) | `freedom-manifest-2.schema.json`, composed from one schema per provider |

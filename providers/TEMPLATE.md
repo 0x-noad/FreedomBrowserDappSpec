@@ -24,8 +24,10 @@
 - **When absent.** <What the dapp sees: `4900` with which `data.reason`
   values, and what `dapp_getProviders` reports as `status`.>
 - **Identity vault.** <Which capabilities need the vault unlocked, so that
-  `SPEC.md` §6.11 applies to them; "none" if none. The vault's existence
-  is required for every grant by the core, not by the provider.>
+  `SPEC.md` §6.11 applies to them; "none" if none. Say too whether the
+  provider's data waits only on the first unlock of a session (sealed).
+  The vault's existence is required for every grant by the core, not by
+  the provider.>
 - **Offline.** <What works with no network (`SPEC.md` §1.5).>
 - **Other providers.** <Each provider this one integrates with, by id,
   the pattern of `SPEC.md` §12.5 it uses, and what happens when that
@@ -115,15 +117,20 @@ Binary or other conventions that differ from `SPEC.md` §7: <state them, or
 - **On revoke**: what ends (subscriptions), what stays (data).
 - **On remove** (`SPEC.md` §8.4): what is deleted, what is offered for
   export, what remains and why.
+- **After a signing-key change** (`SPEC.md` §5.7), where the provider
+  holds dapp data: what is held for the user, how it is shown, and that
+  the re-added dapp gets none of it.
 
 ## 9. Surfaces
 
 - **Consent sheet**: the rows this provider contributes, any mandatory
   wording (for example a disclosure the row must carry), and which prompts
   it raises later (per-call prompts, with the material facts they name).
-- **Details page**: what this provider shows under **Info** (read-only
-  facts and figures) and under **Settings** (every row with a control:
-  revoke, unseed, allowance, …). Never a third header (`SPEC.md` §10.4).
+- **Details page**: what this provider's own section MUST show
+  (`SPEC.md` §10.4): at least its capability rows with enabled,
+  always-allow where eligible and revoke; the dapp's usage and facts under
+  the provider; and every control it has for this dapp (unseed,
+  allowance, delete, export, …). Nothing outside its section.
 - **`freedom://files`**: what this provider puts in each of the
   explorer's four slots (`SPEC.md` §10.5): its publication record (the
   `ref` format and when the host writes one), inspector facts, a per-file

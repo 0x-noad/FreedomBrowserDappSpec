@@ -1,6 +1,7 @@
 /**
  * Freedom Browser Dapp Specification — page-facing types for `window.dapp`.
- * specVersion "1". Normative text: SPEC.md (core) and providers/files.md.
+ * specVersion "1". Normative text: SPEC.md (core), providers/safe.md and
+ * providers/files.md.
  *
  * `window.swarm`, `window.radicle` and `window.ethereum` are not described
  * here; they ship as before (SPEC.md §1.4).
@@ -24,13 +25,13 @@ namespace FreedomDapp {
   type SpecVersion = "1";
 
   /** Provider ids registered in v1. `ipfs`, `chain` and `ethereum` are reserved and never appear. SPEC.md §12.1. */
-  type ProviderId = "files" | "swarm" | "radicle";
+  type ProviderId = "safe" | "files" | "swarm" | "radicle";
 
   /** `<provider>:<name>`. SPEC.md §6.1. */
   type CapabilityId =
-    | "files:private"
-    | "files:read-shared"
-    | "files:write-shared"
+    | "safe:store"
+    | "files:own"
+    | "files:read"
     | "swarm:publish"
     | "swarm:feeds"
     | "swarm:signing"
@@ -132,9 +133,9 @@ namespace FreedomDapp {
   interface IdentityState {
     /** false before the host's identity onboarding or after the vault was deleted; a site that is not added always reads true. */
     exists: boolean;
-    /** While true, private-root Files calls and signing wait for the unlock prompt. */
+    /** While true, Safe calls and signing wait for the unlock prompt. */
     locked: boolean;
-    /** No unlock yet this session: both roots wait for the unlock prompt. Implies `locked`. */
+    /** No unlock yet this session: Files calls wait for the unlock prompt too. Implies `locked`. */
     sealed: boolean;
   }
 
@@ -148,7 +149,8 @@ namespace FreedomDapp {
   // Files provider (providers/files.md)
   // ---------------------------------------------------------------------
 
-  type Root = "private" | "shared";
+  /** A file's mark: `shared` is readable by every dapp holding files:read; `private` by its author alone. providers/files.md §8.1. */
+  type Visibility = "shared" | "private";
 
   type Location = "local" | "published";
 
@@ -164,8 +166,9 @@ namespace FreedomDapp {
 
   interface FileEntry {
     name: string;
-    /** Present for the shared root. */
-    author?: Author;
+    /** A dapp key, `user` or `agent`. */
+    author: Author;
+    visibility: Visibility;
     size: number;
     type: string;
     /** CIDv1 of the bytes; also the etag. providers/files.md §8.5. */
@@ -180,9 +183,9 @@ namespace FreedomDapp {
   /** What `files_write` accepts as `data`. SPEC.md §7.7. */
   type WriteData = string | Uint8Array | ArrayBuffer | Blob;
 
+  /** A file reference: `author` omitted means the caller's own file. SPEC.md §7.8. */
   interface FileRef {
-    root: Root;
-    author?: Author;
+    author?: Author | Self;
     name: string;
   }
 
@@ -198,20 +201,22 @@ namespace FreedomDapp {
     cursor?: string;
   }
 
-  /** A shared listing must name types (providers/files.md §4, `types_required`) unless it is the dapp's own files (`author: "self"`); a private one need not. */
+  /**
+   * `author: "self"` lists the dapp's own files of both marks and needs no types.
+   * Anything else lists shared files only and must name types (`types_required`). providers/files.md §4.
+   */
   type ListParams =
-    | (ListParamsBase & { root: "private"; types?: MimePattern[] })
-    | (ListParamsBase & { root: "shared"; types: Types; /** Narrows further; omitted = every author. */ author?: Author | Self })
-    | (ListParamsBase & { root: "shared"; author: Self; types?: MimePattern[] });
+    | (ListParamsBase & { author: Self; types?: MimePattern[]; visibility?: Visibility })
+    | (ListParamsBase & { types: Types; /** Narrows to one author; omitted = every author. */ author?: Author; /** A filter on `author: "self"` listings only. */ visibility?: never });
 
   interface ListResult {
     items: FileEntry[];
     nextCursor?: string;
   }
 
+  /** `author` omitted means the caller's own file. */
   interface ReadParams {
-    root: Root;
-    author?: Author;
+    author?: Author | Self;
     name: string;
   }
 
@@ -225,21 +230,22 @@ namespace FreedomDapp {
   }
 
   interface WriteParams {
-    root: Root;
     name: string;
     data: WriteData;
     /** Required; verified by sniffing. providers/files.md §8.4. */
     type: string;
-    /** Conditional on the current CID; mismatch is 4409 conflict. */
+    /** A new file is shared when omitted; an overwrite keeps the file's mark. */
+    visibility?: Visibility;
+    /** Conditional on the current CID; a mismatch, or no such file, is 4409 conflict. */
     ifMatch?: string;
     /** `"*"` = create-only; existing name is 4409 exists. */
     ifNoneMatch?: "*";
   }
 
   interface WriteJsonParams {
-    root: Root;
     name: string;
     value: unknown;
+    visibility?: Visibility;
     ifMatch?: string;
     ifNoneMatch?: "*";
   }
@@ -250,35 +256,38 @@ namespace FreedomDapp {
   }
 
   interface DeleteParams {
-    root: Root;
     name: string;
   }
 
   interface RenameParams {
-    root: Root;
     from: string;
     to: string;
   }
 
   interface CopyParams {
     from: FileRef;
-    to: { root: Root; name: string };
+    to: { name: string };
+    /** Omitted: the copy of an own file takes the source's mark; the copy of another author's file is shared. */
+    visibility?: Visibility;
     ifNoneMatch?: "*";
   }
 
+  interface SetVisibilityParams {
+    name: string;
+    visibility: Visibility;
+  }
+
   interface SetPublicationParams {
-    root: Root;
     name: string;
     /** A provider that declares a publication record (providers/files.md §8.6). */
     provider: string;
     ref: string;
   }
 
-  /** Same rule as `ListParams`: a shared subscription names types. */
+  /** Same rule as `ListParams`: own files with `author: "self"`, otherwise shared files by type. */
   type SubscribeParams =
-    | { root: "private"; prefix?: string; suffix?: string; types?: MimePattern[] }
-    | { root: "shared"; prefix?: string; suffix?: string; types: Types; author?: Author | Self }
-    | { root: "shared"; prefix?: string; suffix?: string; author: Self; types?: MimePattern[] };
+    | { author: Self; prefix?: string; suffix?: string; types?: MimePattern[] }
+    | { types: Types; prefix?: string; suffix?: string; author?: Author };
 
   interface SubscribeResult {
     subscriptionId: string;
@@ -288,51 +297,34 @@ namespace FreedomDapp {
     subscriptionId: string;
   }
 
-  /** `dapp_getProviders` → `providers[].limits` for `files`: the fixed figures only (providers/files.md §8.2). */
+  /** `dapp_getProviders` → `providers[].limits` for `files`: the fixed figure only (providers/files.md §8.2). */
   interface FilesLimits {
-    /** 536870912 (512 MB). */
-    privateBytes: number;
-    /** 67108864 (64 MB). */
-    privateFileBytes: number;
-    /** 1000. */
-    privateCount: number;
-    /** 536870912 (512 MB). */
-    sharedFileBytes: number;
+    /** 536870912 (512 MB) per file. */
+    fileBytes: number;
   }
 
-  interface PrivateQuota {
+  /** Result of `files_getQuota`. providers/files.md §8.2. */
+  interface FilesQuota {
     used: number;
-    /** 536870912 (512 MB). */
+    /** This dapp's allowance (default 1 GB, user-adjustable), covering its files of both marks. */
     limit: number;
-    free: number;
-    count: number;
-    /** 1000. */
-    countLimit: number;
-    /** 67108864 (64 MB). */
-    fileLimit: number;
-  }
-
-  interface SharedQuota {
-    used: number;
-    /** This dapp's allowance (default 1 GB, user-adjustable). */
-    limit: number;
-        /** min(allowance free, pool free) with a shared row; the allowance's free space alone without. */
+    /** min(allowance free, pool free) with a files grant; the allowance's free space alone without. */
     free: number;
     /** 536870912 (512 MB). */
     fileLimit: number;
-    /** Present only while the dapp holds files:read-shared or files:write-shared (providers/files.md §8.2). */
+    /** Present only while the dapp holds files:own or files:read (providers/files.md §8.2). */
     pool?: { used: number; limit: number; free: number };
   }
 
-  type FilesChangedKind = "created" | "modified" | "deleted" | "renamed" | "published";
+  type FilesChangedKind = "created" | "modified" | "deleted" | "renamed" | "published" | "visibility";
 
   /** Payload of `files:changed`. providers/files.md §5. */
   interface FilesChanged {
-    root: Root;
     author: Author;
     name: string;
     kind: FilesChangedKind;
     cid: string;
+    visibility: Visibility;
     /** Old name, for `renamed`. */
     from?: string;
     /** The new record with its provider, for `published`. */
@@ -340,7 +332,82 @@ namespace FreedomDapp {
   }
 
   // ---------------------------------------------------------------------
-  // Wire: method name → params → result (SPEC.md §7.2–7.4, providers/files.md §4)
+  // Safe provider (providers/safe.md)
+  // ---------------------------------------------------------------------
+
+  /** A JSON value. */
+  type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+
+  /** What `safe_set` accepts: a JSON value, or bytes. */
+  type SafeValue = Json | Uint8Array | ArrayBuffer | Blob;
+
+  /** A key's facts, without its value. providers/safe.md §4. */
+  interface SafeItem {
+    /** 1–128 characters from A–Z a–z 0–9 . _ : / - */
+    key: string;
+    kind: "json" | "bytes";
+    /** Stored length in bytes. */
+    size: number;
+    /** Opaque; changes whenever the value does. */
+    etag: string;
+    /** ms since epoch. */
+    mtime: number;
+  }
+
+  /** Result of `safe_get`: the item with its value; bytes come back as Uint8Array. */
+  type SafeEntry =
+    | (SafeItem & { kind: "json"; value: Json })
+    | (SafeItem & { kind: "bytes"; value: Uint8Array });
+
+  interface SafeSetParams {
+    key: string;
+    value: SafeValue;
+    /** Conditional on the current etag; a mismatch, or an absent key, is 4409 conflict. */
+    ifMatch?: string;
+    /** `"*"` = create-only; existing key is 4409 exists. */
+    ifNoneMatch?: "*";
+  }
+
+  interface SafeKeysParams {
+    prefix?: string;
+    /** Default 200, max 1000. */
+    limit?: number;
+    cursor?: string;
+  }
+
+  /** `dapp_getProviders` → `providers[].limits` for `safe` (providers/safe.md §8.2). */
+  interface SafeLimits {
+    /** 67108864 (64 MB) per dapp. */
+    bytes: number;
+    /** 8388608 (8 MB) per value. */
+    valueBytes: number;
+    /** 1000. */
+    keys: number;
+  }
+
+  /** Result of `safe_getQuota`. */
+  interface SafeQuota {
+    used: number;
+    /** 67108864 (64 MB). */
+    limit: number;
+    free: number;
+    count: number;
+    /** 1000. */
+    countLimit: number;
+    /** 8388608 (8 MB). */
+    valueLimit: number;
+  }
+
+  /** Payload of `safe:changed`. providers/safe.md §5. */
+  interface SafeChanged {
+    key: string;
+    change: "set" | "deleted";
+    /** The new etag, for `set`. */
+    etag?: string;
+  }
+
+  // ---------------------------------------------------------------------
+  // Wire: method name → params → result (SPEC.md §7.2–7.4, providers/safe.md §4, providers/files.md §4)
   // ---------------------------------------------------------------------
 
   interface Methods {
@@ -354,6 +421,14 @@ namespace FreedomDapp {
     /** web3:// origins only. SPEC.md §7.14. */
     dapp_fetch: { params: { url: string }; result: FetchResult };
 
+    safe_get: { params: { key: string }; result: SafeEntry | null };
+    safe_set: { params: SafeSetParams; result: SafeItem };
+    safe_delete: { params: { key: string }; result: Record<string, never> };
+    safe_keys: { params?: SafeKeysParams; result: { items: SafeItem[]; nextCursor?: string } };
+    safe_subscribe: { params?: { prefix?: string }; result: SubscribeResult };
+    safe_unsubscribe: { params: UnsubscribeParams; result: Record<string, never> };
+    safe_getQuota: { params?: undefined; result: SafeQuota };
+
     files_list: { params: ListParams; result: ListResult };
     files_read: { params: ReadParams; result: ReadResult };
     files_stat: { params: ReadParams; result: FileEntry };
@@ -363,17 +438,16 @@ namespace FreedomDapp {
     files_delete: { params: DeleteParams; result: Record<string, never> };
     files_rename: { params: RenameParams; result: FileEntry };
     files_copy: { params: CopyParams; result: FileEntry };
+    files_setVisibility: { params: SetVisibilityParams; result: FileEntry };
     files_setPublication: { params: SetPublicationParams; result: FileEntry };
     files_subscribe: { params: SubscribeParams; result: SubscribeResult };
     files_unsubscribe: { params: UnsubscribeParams; result: Record<string, never> };
-    files_getQuota:
-      | { params: { root: "private" }; result: PrivateQuota }
-      | { params: { root: "shared" }; result: SharedQuota };
+    files_getQuota: { params?: undefined; result: FilesQuota };
   }
 
   type MethodName = keyof Methods;
 
-  type ParamsOf<M extends MethodName> = Methods[M] extends { params: infer P } ? P : never;
+  type ParamsOf<M extends MethodName> = Methods[M] extends { params?: infer P } ? P : never;
   type ResultOf<M extends MethodName> = Methods[M] extends { result: infer R } ? R : never;
 
   interface RequestArgs<M extends MethodName = MethodName> {
@@ -414,6 +488,7 @@ namespace FreedomDapp {
     "job:progress": JobProgress;
     "job:done": JobDone;
     "job:failed": JobFailed;
+    "safe:changed": SafeChanged;
     "files:changed": FilesChanged;
   }
 
@@ -463,28 +538,44 @@ namespace FreedomDapp {
     | "dapp_quota"
     | "pool_quota"
     | "file_too_large"
-    | "too_many_files"
     // 4900
     | "store_unavailable"
     // -32602
-    | "invalid_root"
     | "invalid_name"
     | "invalid_type"
+    | "invalid_visibility"
     | "type_mismatch"
     | "not_found"
-    
+    | "types_required"
+    | "unknown_provider"
     | "invalid_reference"
     | "invalid_cursor"
-        | "invalid_subscription"
-        | "too_many_subscriptions"
+    | "invalid_subscription"
+    | "too_many_subscriptions"
     | "invalid_json"
+    // -32603
+    | "disk_full"
+    | "io_error";
 
+  type SafeReason =
+    // 4300
+    | "safe_quota"
+    | "value_too_large"
+    | "too_many_keys"
+    // 4900
+    | "store_unavailable"
+    // -32602
+    | "invalid_key"
+    | "invalid_value"
+    | "invalid_cursor"
+    | "invalid_subscription"
+    | "too_many_subscriptions"
     // -32603
     | "disk_full"
     | "io_error";
 
   interface ErrorData {
-    reason?: CoreReason | FilesReason | string;
+    reason?: CoreReason | FilesReason | SafeReason | string;
     /** With 4300 and some -32602. */
     limit?: number;
     actual?: number;
@@ -511,6 +602,18 @@ namespace FreedomDapp {
     removeListener<E extends EventName>(event: E, listener: Listener<E>): this;
   }
 
+  /** Sugar over the Safe methods. SPEC.md §7.2; providers/safe.md §4. */
+  interface SafeSugar {
+    /** The item with its value, or `null` when the key is absent. */
+    get(params: { key: string }): Promise<SafeEntry | null>;
+    set(params: SafeSetParams): Promise<SafeItem>;
+    delete(params: { key: string }): Promise<Record<string, never>>;
+    keys(params?: SafeKeysParams): Promise<{ items: SafeItem[]; nextCursor?: string }>;
+    subscribe(params?: { prefix?: string }): Promise<SubscribeResult>;
+    unsubscribe(params: UnsubscribeParams): Promise<Record<string, never>>;
+    getQuota(): Promise<SafeQuota>;
+  }
+
   /** Sugar over the Files methods, with Blob/Uint8Array conversions. SPEC.md §7.2, §7.7. */
   interface FilesSugar {
     list(params: ListParams): Promise<ListResult>;
@@ -525,11 +628,11 @@ namespace FreedomDapp {
     delete(params: DeleteParams): Promise<Record<string, never>>;
     rename(params: RenameParams): Promise<FileEntry>;
     copy(params: CopyParams): Promise<FileEntry>;
+    setVisibility(params: SetVisibilityParams): Promise<FileEntry>;
     setPublication(params: SetPublicationParams): Promise<FileEntry>;
     subscribe(params: SubscribeParams): Promise<SubscribeResult>;
     unsubscribe(params: UnsubscribeParams): Promise<Record<string, never>>;
-    getQuota(params: { root: "private" }): Promise<PrivateQuota>;
-    getQuota(params: { root: "shared" }): Promise<SharedQuota>;
+    getQuota(): Promise<FilesQuota>;
   }
 
   interface Dapp extends EventEmitter {
@@ -551,6 +654,7 @@ namespace FreedomDapp {
     /** Present on web3:// origins only; absent elsewhere. SPEC.md §7.14. */
     fetch?(params: { url: string }): Promise<Response>;
 
+    readonly safe: SafeSugar;
     readonly files: FilesSugar;
   }
 
@@ -563,10 +667,13 @@ namespace FreedomDapp {
     why: string;
   }
 
+  type SafeManifestBlock = {
+    store?: CapabilityRow;
+  };
+
   type FilesManifestBlock = {
-    private?: CapabilityRow;
-    "read-shared"?: CapabilityRow;
-    "write-shared"?: CapabilityRow;
+    own?: CapabilityRow;
+    read?: CapabilityRow;
   };
 
   /** Byte-for-byte freedom-manifest/1's block. */
@@ -598,6 +705,7 @@ namespace FreedomDapp {
     /** ≤ 32 characters. */
     version: string;
     capabilities: {
+      safe?: SafeManifestBlock;
       files?: FilesManifestBlock;
       swarm?: SwarmManifestBlock;
       radicle?: RadicleManifestBlock;

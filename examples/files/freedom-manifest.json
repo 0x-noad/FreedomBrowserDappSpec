@@ -6,9 +6,8 @@
   "version": "1.0.0",
   "capabilities": {
     "files": {
-      "private":      { "why": "Writes and reads test files in this dapp's private folder." },
-      "read-shared":  { "why": "Lists shared files by type to check the query rule." },
-      "write-shared": { "why": "Adds a test file to the shared folder, then deletes it." }
+      "own":  { "why": "Writes, marks and deletes test files of its own." },
+      "read": { "why": "Lists shared files by type to check the query rule." }
     }
   },
   "source": "https://example.invalid/FreedomBrowserDappSpec/examples/files"

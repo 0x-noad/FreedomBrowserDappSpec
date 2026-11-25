@@ -7,8 +7,8 @@
   "minProperties": 1,
   "additionalProperties": false,
   "properties": {
-    "private": {
-      "description": "files:private — read and write the dapp's own private folder (consent tier).",
+    "own": {
+      "description": "files:own — read, write, mark and delete the dapp's own files, shared or private (consent tier). No scope.",
       "type": "object",
       "additionalProperties": false,
       "required": ["why"],
@@ -16,17 +16,8 @@
         "why": { "$ref": "#/$defs/why" }
       }
     },
-    "read-shared": {
-      "description": "files:read-shared — read every author's files in the shared pool, by type-named queries (consent tier). No scope: providers/files.md §3, §4.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["why"],
-      "properties": {
-        "why": { "$ref": "#/$defs/why" }
-      }
-    },
-    "write-shared": {
-      "description": "files:write-shared — add, overwrite, delete, rename, copy into and setPublication on the dapp's own shared files (consent tier).",
+    "read": {
+      "description": "files:read — read the shared files of every author, by type-named queries (consent tier). No scope: providers/files.md §3, §4.",
       "type": "object",
       "additionalProperties": false,
       "required": ["why"],

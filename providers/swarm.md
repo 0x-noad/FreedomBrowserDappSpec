@@ -244,12 +244,16 @@ kind, topic and payload size. The `d` indicator shows the waiting state.
 
 ### 9.2 Details page
 
-Under **Info**: the dapp's **publisher identity** (mode and address, or
-"none yet"); its **feeds** (name, topic, last index, last update, with the
-`bzz://` manifest link); its **publish history** (reference, size, time).
-Under **Settings**, in **Capabilities**: the four rows with enabled,
-always-allow and revoke. Nothing new is stored for this; the index
-reads the three Swarm stores.
+The **Swarm** section (`SPEC.md` §10.4) MUST show:
+
+- the dapp's **publisher identity** (mode and address, or "none yet");
+- its **feeds** (name, topic, last index, last update, with the `bzz://`
+  manifest link);
+- its **publish history** (reference, size, time);
+- the capability rows the dapp declares, each with enabled, always-allow
+  and revoke.
+
+Nothing new is stored for this; the index reads the three Swarm stores.
 
 ### 9.3 Sidebar
 
@@ -293,14 +297,14 @@ The explorer's four slots (`SPEC.md` §10.5):
    shipped prompt surfaces for `/1` sites.
 5. The host MUST, in the main-process `swarm_publishData` path and
    without touching the provider API, hash the payload to a CIDv1
-   (`providers/files.md` §8.5) and look it up in the Files content index
-   (`providers/files.md` §8.7) of each root readable at that moment; when
-   a file of the same dapp, authored by it, has that CID, the host writes
-   the Swarm publication record on it with `verified: true`
-   (`providers/files.md` §8.6, §9.4). One hash per publish. A root whose
-   key is not in memory (private while locked, both while sealed,
-   `SPEC.md` §6.11) is skipped, so a publish made then may leave no
-   record; the dapp can report it with `files_setPublication`.
+   (`providers/files.md` §8.5) and look it up in the Files sidecar index
+   (`providers/files.md` §8.7); when a file authored by the same dapp, of
+   either mark, has that CID, the host writes the Swarm publication record
+   on it with `verified: true` (`providers/files.md` §8.6; §9.4 above). One hash
+   per publish. While the vault is sealed the index is unreadable
+   (`SPEC.md` §6.11) and no match is made, so a publish made then leaves
+   no record; the dapp can report it with `files_setPublication`. Safe
+   values are never matched: a safe holds no files.
 6. The host MUST apply the dapp key as the Swarm permission key. They are
    the same function (`SPEC.md` §3.2), in the development realm too, where
    it emits `dev:<label>:<port>` (`SPEC.md` §3.6), so no store re-keys, nothing

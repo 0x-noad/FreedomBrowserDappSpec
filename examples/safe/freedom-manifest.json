@@ -1,0 +1,13 @@
+{
+  "schema": "freedom-manifest/2",
+  "name": "Safe check",
+  "description": "Conformance fixture for the Safe provider: exercises every safe_* method.",
+  "icon": "./icon.png",
+  "version": "1.0.0",
+  "capabilities": {
+    "safe": {
+      "store": { "why": "Writes and reads test values in this dapp's safe." }
+    }
+  },
+  "source": "https://example.invalid/FreedomBrowserDappSpec/examples/safe"
+}

@@ -1,7 +1,18 @@
 {
-  "$comment": "Capability registry for the Freedom Browser Dapp Specification, specVersion 1. Generated from providers/*.md; every capability a host may grant, with its tier, scope schema, the methods it unlocks and its consent-sheet string (SPEC.md §6.1, §12.6). Reserved prefixes carry no capabilities.",
+  "$comment": "Capability registry for the Freedom Browser Dapp Specification, specVersion 1. Generated from providers/*.md; every capability a host may grant, with its tier, scope schema, the methods it unlocks and its consent-sheet string (SPEC.md §6.1, §12.6). needsIdentityVault: the vault's lock gates it; needsUnseal (per provider): the provider's data is unreadable until the first unlock of a session, whether or not a later lock gates it (SPEC.md §6.11). publicMethods (per provider): its public-tier methods, which no capability lists; given for window.dapp providers, a shipped provider's public methods are in its document. Reserved prefixes carry no capabilities.",
   "specVersion": "1",
   "providers": {
+    "safe": {
+      "displayName": "Safe",
+      "surface": "window.dapp",
+      "status": "stable",
+      "version": "1",
+      "document": "providers/safe.md",
+      "schema": "schemas/providers/safe.schema.json",
+      "needsIdentityVault": true,
+      "needsUnseal": true,
+      "publicMethods": ["safe_getQuota"]
+    },
     "files": {
       "displayName": "Files",
       "surface": "window.dapp",
@@ -9,7 +20,9 @@
       "version": "1",
       "document": "providers/files.md",
       "schema": "schemas/providers/files.schema.json",
-      "needsIdentityVault": true
+      "needsIdentityVault": false,
+      "needsUnseal": true,
+      "publicMethods": ["files_getQuota"]
     },
     "swarm": {
       "displayName": "Swarm",
@@ -39,54 +52,56 @@
   },
   "capabilities": [
     {
-      "id": "files:private",
-      "provider": "files",
-      "manifestKey": "private",
+      "id": "safe:store",
+      "provider": "safe",
+      "manifestKey": "store",
       "tier": "consent",
       "alwaysAllow": "not-applicable",
       "needsIdentityVault": true,
       "scope": null,
-      "consentString": "Keep files on this device that only this dapp can open",
+      "consentString": "Keep private data for this dapp, locked with your identity",
       "methods": [
-        "files_list", "files_read", "files_stat", "files_readJson",
-        "files_write", "files_writeJson", "files_delete", "files_rename",
-        "files_copy", "files_setPublication", "files_subscribe", "files_unsubscribe"
+        "safe_get", "safe_set", "safe_delete", "safe_keys",
+        "safe_subscribe", "safe_unsubscribe"
       ],
-      "methodsNote": "On root \"private\"; files_copy additionally needs the write capability of its destination root.",
-      "events": ["files:changed"]
+      "methodsNote": "The dapp's own safe only. Every method needs the identity vault unlocked except safe_unsubscribe (providers/safe.md §2).",
+      "events": ["safe:changed"]
     },
     {
-      "id": "files:read-shared",
+      "id": "files:own",
       "provider": "files",
-      "manifestKey": "read-shared",
+      "manifestKey": "own",
       "tier": "consent",
       "alwaysAllow": "not-applicable",
       "needsIdentityVault": false,
       "scope": null,
-      "consentString": "Read files in your shared folder",
+      "consentString": "Store files on this device",
+      "mandatoryDisclosure": "Files this dapp stores go in your shared folder, where dapps you allow can read them, unless the dapp marks them private.",
+      "methods": [
+        "files_list", "files_read", "files_stat", "files_readJson",
+        "files_write", "files_writeJson", "files_delete", "files_rename",
+        "files_copy", "files_setVisibility", "files_setPublication",
+        "files_subscribe", "files_unsubscribe"
+      ],
+      "methodsNote": "The dapp's own files, shared or private (list and subscribe with author \"self\"). files_copy from another author's shared file additionally needs files:read.",
+      "events": ["files:changed"]
+    },
+    {
+      "id": "files:read",
+      "provider": "files",
+      "manifestKey": "read",
+      "tier": "consent",
+      "alwaysAllow": "not-applicable",
+      "needsIdentityVault": false,
+      "scope": null,
+      "consentString": "Read files other dapps shared",
       "mandatoryDisclosure": "Everything in your shared folder, including which dapp added each file, is visible to every dapp you allow to read it.",
       "methods": [
         "files_list", "files_read", "files_stat", "files_readJson",
-        "files_subscribe", "files_unsubscribe"
+        "files_copy", "files_subscribe", "files_unsubscribe"
       ],
-      "methodsNote": "On root \"shared\": every author's files; list and subscribe must name types (providers/files.md §4).",
+      "methodsNote": "Shared files of every author; list and subscribe must name types (providers/files.md §4). files_copy as a source only; the copy needs files:own.",
       "events": ["files:changed"]
-    },
-    {
-      "id": "files:write-shared",
-      "provider": "files",
-      "manifestKey": "write-shared",
-      "tier": "consent",
-      "alwaysAllow": "not-applicable",
-      "needsIdentityVault": false,
-      "scope": null,
-      "consentString": "Add files to your shared folder",
-      "methods": [
-        "files_write", "files_writeJson", "files_delete", "files_rename",
-        "files_copy", "files_setPublication"
-      ],
-      "methodsNote": "On root \"shared\", own files only.",
-      "events": []
     },
     {
       "id": "swarm:publish",

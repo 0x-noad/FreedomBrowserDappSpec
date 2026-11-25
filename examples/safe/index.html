@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Safe check</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <img src="./icon.png" alt="" width="32" height="32">
+    <div>
+      <h1>Safe check</h1>
+      <p>Conformance fixture for <code>providers/safe.md</code> §11. Press <b>Add</b> on the consent sheet, then <b>Run</b>.</p>
+    </div>
+  </header>
+
+  <section id="status" class="card">
+    <p id="detect">Checking for <code>window.dapp</code>…</p>
+    <div class="row">
+      <button id="connect" disabled>Request capabilities</button>
+      <button id="run" disabled>Run</button>
+      <button id="slow" disabled title="Writes a 9 MB value and 1 001 keys to check the limits; takes a while">Run slow checks</button>
+      <button id="relinquish" disabled>Relinquish</button>
+    </div>
+    <p id="summary" class="muted"></p>
+    <p id="quota" class="muted"></p>
+    <p id="events" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <table id="results">
+      <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Manual checks</h2>
+    <ol class="manual">
+      <li>The consent sheet showed one Safe row with its string verbatim and no always-allow toggle.</li>
+      <li>The details page has a <b>Safe</b> section showing usage of 64 MB and the key count, the list of keys with kind, size and date, <b>Delete</b> per key, <b>Delete all</b>, <b>Export</b>, and the capability row with enabled and revoke. No value is displayed.</li>
+      <li>With the identity vault locked, the Safe section shows usage and <b>Unlock</b> in place of the key list and of Export; pressing <b>Run</b> here shows the unlock prompt on the first safe call and the run completes after unlock. Dismissing the prompt makes the call fail with <code>4100 locked</code>, and a second call fails at once without a prompt.</li>
+      <li>This page polls <code>safe_getQuota</code> every 20 s (the line under the buttons); left idle, the vault still locks on schedule: the page’s calls never postpone it.</li>
+      <li>After a run, with one key under <code>check/</code> written again from the console (<code>dapp.safe.set({ key: 'check/x', value: 1 })</code>), deleting it on the details page shows <code>safe:changed: deleted</code> under the buttons (the run leaves one subscription live).</li>
+      <li>On a tab Freedom Agent holds, the first safe read shows the prompt “Freedom Agent is in control of this tab and may see what this dapp reads from its Safe.”; <b>Allow</b> lets this page’s reads run until it unloads; <b>Don’t allow</b> fails them with <code>4100 agent_custody</code> without asking again. Safe writes there prompt with the action and the size only.</li>
+      <li>The dapp’s activity log shows the safe writes of a run with action and size and no key names.</li>
+      <li><b>Export</b> writes one file per key and an <code>index.json</code>; it asks for unlock first when locked.</li>
+      <li><code>freedom://files</code> shows nothing of this dapp: a safe is not in the explorer.</li>
+      <li>Removing the dapp names the bytes in its safe and offers the export first.</li>
+    </ol>
+  </section>
+
+  <script src="./harness.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

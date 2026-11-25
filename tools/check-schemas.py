@@ -1,4 +1,4 @@
-# Checks the four JSON Schemas compile, composes them, parses registry.json, and
+# Checks the five JSON Schemas compile, composes them, parses registry.json, and
 # runs accept/reject cases against freedom-manifest-2.schema.json.
 # Usage: python3 tools/check-schemas.py <repo root>   (needs: pip install jsonschema)
 import json, sys, copy
@@ -11,6 +11,7 @@ root = Path(sys.argv[1])
 def load(rel): return json.loads((root/rel).read_text())
 schemas = {
   "schemas/freedom-manifest-2.schema.json": load("schemas/freedom-manifest-2.schema.json"),
+  "schemas/providers/safe.schema.json": load("schemas/providers/safe.schema.json"),
   "schemas/providers/files.schema.json": load("schemas/providers/files.schema.json"),
   "schemas/providers/swarm.schema.json": load("schemas/providers/swarm.schema.json"),
   "schemas/providers/radicle.schema.json": load("schemas/providers/radicle.schema.json"),
@@ -27,9 +28,9 @@ good = {
   "description": "Encrypted notes you can share with other dapps.",
   "icon": "./icon.png", "version": "1.4.0",
   "capabilities": {
-    "files": {"private": {"why": "Stores your notes on this device."},
-              "read-shared": {"why": "Imports images other dapps shared."},
-              "write-shared": {"why": "Shares notes you export."}},
+    "safe": {"store": {"why": "Keeps your settings and sign-in on this device."}},
+    "files": {"own": {"why": "Stores your notes and shares the ones you export."},
+              "read": {"why": "Imports images other dapps shared."}},
     "swarm": {"publish": {"why": "Publishes a note as a page when you ask."}},
     "radicle": {"node": {"why": "Seeds repos."}, "signing": {"why": "Files issues."}}
   }
@@ -60,9 +61,13 @@ cases_bad = {
   "swarm unknown row": bad(capabilities={"swarm": {"pin": {"why": "x"}}}),
   "swarm empty block": bad(capabilities={"swarm": {}}),
     "files empty block": bad(capabilities={"files": {}}),
-  "files row without why": bad(capabilities={"files": {"private": {}}}),
-  "files read-shared takes no scope": bad(capabilities={"files": {"read-shared": {"why": "x", "scope": {"types": ["image/*"]}}}}),
-  "why too long": bad(capabilities={"files": {"private": {"why": "w"*141}}}),
+  "files row without why": bad(capabilities={"files": {"own": {}}}),
+  "files:read takes no scope": bad(capabilities={"files": {"read": {"why": "x", "scope": {"types": ["image/*"]}}}}),
+  "files old row private": bad(capabilities={"files": {"private": {"why": "x"}}}),
+  "files old row read-shared": bad(capabilities={"files": {"read-shared": {"why": "x"}}}),
+  "safe empty block": bad(capabilities={"safe": {}}),
+  "safe unknown row": bad(capabilities={"safe": {"read": {"why": "x"}}}),
+  "why too long": bad(capabilities={"safe": {"store": {"why": "w"*141}}}),
   "icon absolute path": bad(icon="/icon.png"),
   "icon dotdot": bad(icon="../icon.png"),
   "icon svg data uri": bad(icon="data:image/svg+xml;base64,PHN2Zz4="),
@@ -82,7 +87,7 @@ for name, doc in cases_bad.items():
 print("FAILURES:", fails)
 
 # Example manifests must validate too.
-for ex in ["files", "swarm", "radicle"]:
+for ex in ["safe", "files", "swarm", "radicle"]:
     doc = json.loads((root / "examples" / ex / "freedom-manifest.json").read_text())
     errs = list(v.iter_errors(doc))
     print(("OK  " if not errs else "FAIL") + f" example manifest: {ex}" + ("" if not errs else "  -> " + "; ".join(e.message[:90] for e in errs)))
