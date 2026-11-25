@@ -180,8 +180,11 @@
       const ev = once(dapp, 'safe:changed', (e) => e.key === P + 'event' && e.change === 'set');
       const w = await dapp.safe.set({ key: P + 'event', value: 1 });
       eq((await ev).etag, w.etag, 'event carries the new etag');
+      const again = once(dapp, 'safe:changed', (e) => e.key === P + 'event' && e.change === 'set');
+      await dapp.safe.set({ key: P + 'event', value: 1 });
+      eq((await again).etag, w.etag, 'an identical set raises the event with the same etag');
       await dapp.safe.unsubscribe({ subscriptionId });
-      return 'set delivered, then unsubscribed';
+      return 'set delivered, an identical set too, then unsubscribed';
     });
 
     await test('the 61st live subscription in one document is -32602 too_many_subscriptions', async () => {

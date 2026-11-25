@@ -384,9 +384,12 @@ also what makes them survive a reinstall. Three consequences for you:
   first `requestCapabilities` opens Freedom's identity setup for them and
   then the consent sheet; if they back out you get `4100 no_identity`.
   Nothing for you to do but show a plain message and try again later.
-- After a browser launch the identity is **sealed** until the user unlocks
-  it once; your first safe or files call then shows the unlock prompt, in
-  the tab the user is looking at, and completes after it.
+- After a browser launch the identity is **sealed** and your dapp is not
+  connected until the user unlocks it once. Your first call beyond the
+  public tier, on `window.dapp`, `window.swarm` or `window.radicle`
+  (usually `requestCapabilities`), shows the unlock prompt in the tab the
+  user is looking at and completes after it; `getIdentityState().sealed`
+  tells you without prompting. One unlock lasts the session.
 - After a while idle (Freedom's own setting) the identity **locks**, and
   with it your **safe**. Your files stay readable, private ones included.
   A safe call from the tab the user is looking at shows the unlock prompt
@@ -473,16 +476,18 @@ reference on every load and fetches the manifest only when it changed.
 once your dapp is connected. Design your first screen to make sense before any
 grant.
 
-**When you ship a new build** under a name, Freedom notices the root
-reference changed and shows an **update notice** before the new build may
-use anything: old and new `version`, any new capabilities (unticked; the
-user ticks them), and whether the signing key is the same. Until the user
-approves, every call beyond the public tier (discovery, `getCapabilities`,
-`getManifest`, `safe.getQuota`, `files.getQuota`) rejects `4100
-update_pending`. Handle it: show
-"update waiting for approval" rather than an error. `updatePending` and
+**When you ship a new build** under a name, Freedom notices the root reference
+changed and shows an **update notice** before the new build may use anything:
+old and new `version`, any new capabilities (unticked; the user ticks them),
+and whether the signing key is the same. Until the user approves, every call
+beyond the public tier (discovery, `getCapabilities`, `getManifest`,
+`safe.getQuota`, `files.getQuota`) rejects `4100 update_pending`. Handle it:
+show "update waiting for approval" rather than an error. `updatePending` and
 `updateApplied` events tell you when, and `getManifest().pending` says which
-notice is waiting (`update`, `missing`, `invalid` or `key-change`).
+notice is waiting (`update`, `missing`, `invalid` or `key-change`). After a
+`key-change` your grants are gone until the user re-adds you: gated calls
+reject `unauthorized` and `requestCapabilities` rejects `update_pending`, so
+read `pending` before asking again.
 
 Rules of the update:
 

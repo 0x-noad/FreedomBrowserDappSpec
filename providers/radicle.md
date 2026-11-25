@@ -44,7 +44,10 @@ to `window.dapp`, and from the upstream document where it applies to
 - **Identity vault.** None for signing: writes sign with the Radicle
   **node identity**, which is the node's own key, not the wallet vault, so
   the lock gates no Radicle call (as shipped). The vault must exist for
-  any grant, as for every provider (`SPEC.md` §6.11).
+  any grant, as for every provider (`SPEC.md` §6.11). Before the first
+  unlock of a session no added dapp is connected: every call that needs
+  the connection or a row waits on the unlock prompt, and only
+  `radicle_getCapabilities` answers (`SPEC.md` §6.11).
 - **Offline.** `radicle_getCapabilities`, `radicle_listSeededRepos`,
   `radicle_getSeedStatus` and `radicle_disconnect` work without peers;
   seeding, syncing and writes need the node running and announce over the
@@ -108,6 +111,10 @@ which follows the Swarm table (`SPEC.md` §7.11).
 | `radicle_sync` | upstream | `radicle:node` | never; seeded repos only (`not_seeded`) | no | host-set write budget, §4.1 | 60 s |
 | `radicle_getIdentity` | upstream (`{ did, nid, alias }`) | `radicle:signing` | never for an added dapp (`4100` without the row, §7); for a site without a record, as shipped, the first call may prompt | no | none | 300 s |
 | `radicle_createIssue`, `radicle_commentIssue`, `radicle_editIssueState`, `radicle_commentPatch` | upstream (announce before returning; irrevocable once gossiped) | `radicle:signing` | per write unless always-allow | no | host-set write budget, §4.1 | 300 s |
+
+For an added dapp, every method but `radicle_getCapabilities` shows the
+unlock prompt while the identity vault is sealed (§2) and rejects `4100
+locked` when it is dismissed (`SPEC.md` §6.11).
 
 Progress for seeding stays the shipped
 `seedStatus` event and `radicle_getSeedStatus` snapshot; the core job events
@@ -177,8 +184,8 @@ As shipped. Reason strings under the core codes:
 |---|---|---|
 | `4001` | (no `data`) | the user rejected a prompt |
 | `4100` | (no `data`) | no connection grant, grant revoked, or tier not granted, as shipped |
-| `4100` | `agent_custody` | a grant-answered write on a tab Freedom Agent holds |
-| `4100` | `disabled`, `update_pending` | the core's rules (`SPEC.md` §6.9, §5.4) applied to a Radicle call |
+| `4100` | `agent_custody` | for an added dapp: a write (seed, unseed and the COB writes) the user refused on a tab Freedom Agent holds, or one a grant would have answered there (`SPEC.md` §9.2) |
+| `4100` | `disabled`, `update_pending`, `locked` | the core's rules (`SPEC.md` §6.9, §5.4, §6.11) applied to a Radicle call |
 | `4900` | (no `data`) | integration disabled, node stopped, or node not ready |
 | `-32602` | `invalid_rid`, `invalid_id`, `invalid_title`, `invalid_body` | a parameter fails validation before the addon boundary |
 | `-32602` | `not_seeded` | `radicle_sync` of a repo with no seeding policy |
@@ -275,12 +282,18 @@ None: Radicle holds no stored-file records, verbs or panel
 7. The host MUST log every seed, unseed, sync and COB write to the dapp's
    activity log (`SPEC.md` §6.12).
 8. On a tab Freedom Agent holds, the host MUST apply the custody rule to
-   every Radicle write, as shipped (`SPEC.md` §9.2).
+   every Radicle write (seed, unseed and the COB writes; `radicle_sync`
+   never prompts, as shipped): each is prompted, and for an added dapp a
+   refused one is `4100 agent_custody` (`SPEC.md` §9.2).
 9. The host MUST reject every non-public Radicle call for the dapp while an
    update notice is pending (`4100 update_pending`) and while the dapp or
    the row is paused (`4100 disabled`).
 10. The host MUST rate-limit write methods to 60 per fixed minute per dapp
     key, `-32005` with `data.retryAfterMs` (§4.1).
+11. While the identity vault is sealed the host MUST NOT answer any call
+    of an added dapp but `radicle_getCapabilities`: it shows the unlock
+    prompt first, under always-allow too (`SPEC.md` §6.11). Sites without
+    a record are as shipped.
 
 *Informative.* Upstream modules: the Radicle provider IPC and
 `radicle-permissions.js` (grants, now also seed records),
@@ -325,5 +338,9 @@ Conformance checklist (`examples/radicle/`):
 - [ ] `radicle_disconnect` drops connection, signing and auto-approves and
       emits `disconnect`;
 - [ ] the signing row's disclosure sentence (§9.1) appears verbatim;
-- [ ] on an Agent-held tab a write prompts with its content and a
-      grant-answered write is `4100 agent_custody`.
+- [ ] on an Agent-held tab a seed, an unseed and a COB write each prompt
+      whatever the always-allow state, and a refused one is `4100
+      agent_custody` for an added dapp;
+- [ ] before the first unlock of a session, every call of an added dapp
+      but `radicle_getCapabilities` shows the unlock prompt, under
+      always-allow too, and `4100 locked` on dismiss.

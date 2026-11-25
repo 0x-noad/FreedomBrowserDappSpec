@@ -42,13 +42,13 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
   (`SPEC.md` §6.2).
 - **Identity vault.** The files key is derived at the first unlock of a
   session and stays in memory until the browser exits (`SPEC.md` §8.1).
-  While the vault is **sealed** (no unlock yet this session) every method
-  except `files_getQuota` and `files_unsubscribe` waits on the unlock
-  prompt as `SPEC.md` §6.11 says (`4100 locked` on dismiss or when the
-  wait ends). Once unsealed, no Files call is gated by a later lock,
-  whatever the file's mark; the one place a later lock is felt is the
-  storage prompt, whose accept needs unlock (§8.8). No Files capability
-  needs the vault for signing.
+  While the vault is **sealed** (no unlock yet this session) no added
+  dapp is connected, and every method except `files_getQuota` and
+  `files_unsubscribe` waits on the unlock prompt as `SPEC.md` §6.11 says
+  (`4100 locked` on dismiss or when the wait ends). Once unsealed, no
+  Files call is gated by a later lock, whatever the file's mark; the one
+  place a later lock is felt is the storage prompt, whose accept needs
+  unlock (§8.8). No Files capability needs the vault for signing.
 - **Offline.** Everything works offline.
 - **Other providers.** Any provider that publishes bytes may hold a
   **publication record** on a file (§8.6; the annotation pattern of
@@ -193,8 +193,10 @@ Method rules:
   the filters until `files_unsubscribe` or the document ends. The rule of
   `list` applies: `author: "self"` watches the dapp's own files; anything
   else watches shared files and requires `types` (`types_required`), so
-  change events are no listing by another route. At most 60 live
-  subscriptions per document.
+  change events are no listing by another route. A `renamed` event
+  matches when either its new or its old name passes the `prefix` and
+  `suffix` filters, so a file renamed out of a watched pattern is seen
+  leaving it. At most 60 live subscriptions per document.
 
 ### 4.1 Rate limits
 
@@ -210,14 +212,17 @@ Method rules:
 | `files:changed` | `{ author, name, kind, cid, visibility, from?, publication? }` | `files:own` for an `author: "self"` subscription; `files:read` for a type-named one |
 
 `kind` is one of `created`, `modified`, `deleted`, `renamed` (`from` is the
-old name), `published` (`publication` is the new record with its `provider`
-added, §8.6) and `visibility` (the mark changed; delivered to the author dapp
-only, on any of its subscriptions the file matches). To a subscriber that is
-not the author, a file marked private arrives as an ordinary `deleted` and a
-file marked shared as an ordinary `created`, each indistinguishable from a
-real one and carrying `visibility: "shared"`: a private file never appears in
-another dapp's events. A document receives one event per change, however many
-of its subscriptions match, its own changes included. Events are raised for
+old name; a subscription matches when either name passes its `prefix` and
+`suffix`, §4), `published` (`publication` is the new record with its
+`provider` added, §8.6) and `visibility` (the mark changed; delivered to the
+author dapp only, on any of its subscriptions the file matches). To a
+subscriber that is not the author, a file marked private arrives as an
+ordinary `deleted` and a file marked shared as an ordinary `created`, each
+indistinguishable from a real one and carrying `visibility: "shared"`: a
+private file never appears in another dapp's events. A document receives one
+event per change, however many of its subscriptions match, its own changes
+included. A write that leaves the bytes as they were is still `modified`: its
+`mtime` moves, its CID and its publication records stay. Events are raised for
 changes made by any tab of the same dapp, by the user in `freedom://files`, by
 another dapp or by Freedom Agent, and by a provider writing a publication
 record. **An Agent read raises nothing** (§9.4). Nothing is delivered while
@@ -736,7 +741,8 @@ Conformance checklist (`examples/files/`):
       that changes the bytes drops them; `ifMatch` on an absent name is
       `conflict`;
 - [ ] a document receives one event per change, its own included, and none
-      while a notice is unanswered or the dapp is paused;
+      while a notice is unanswered or the dapp is paused; a rename reaches
+      a subscription whose `prefix` or `suffix` only the old name passes;
 - [ ] on a tab Freedom Agent holds, every write is prompted with its
       content and **Don't allow** is `4100 agent_custody`;
 - [ ] the user can re-mark a dapp's file and not a `user` or `agent` file;

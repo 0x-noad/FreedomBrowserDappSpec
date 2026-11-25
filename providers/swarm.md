@@ -39,7 +39,10 @@ to `window.dapp`, and from the upstream document where it applies to
   `window.swarm` itself is always present on a dapp page.
 - **Identity vault.** `swarm:feeds` and `swarm:signing` need the vault
   unlocked (feed and SOC writes are signed); `SPEC.md` §6.11 applies.
-  `swarm:publish` and `swarm:messaging` do not.
+  `swarm:publish` and `swarm:messaging` do not. Before the first unlock
+  of a session no added dapp is connected: every call that needs the
+  connection or a row waits on the unlock prompt, and only the methods
+  that require nothing answer (`SPEC.md` §6.11).
 - **Offline.** `swarm_listFeeds` and `swarm_getCapabilities` work without
   the node; everything else needs it and fails fast with `4900`.
 - **Other providers.** `files`, optional, by the annotation pattern of
@@ -103,6 +106,11 @@ specification's view of the shipped tier.
 | `swarm_getMessagingIdentity`, `swarm_subscribe` | upstream | `swarm:messaging` | never for an added dapp (`4100 messaging_not_granted` without the row, §7); for a site without a record, as shipped, the first call grants the tier | no | 32 subscriptions per key | 300 s |
 | `swarm_sendPss`, `swarm_sendGsoc` | upstream | `swarm:messaging` | per send unless always-allow | no | 16 new GSOC topics per key per minute | 300 s |
 | `swarm_unsubscribe` | upstream | connected | never | no | none | 60 s |
+
+For an added dapp, every method that requires the connection or a
+capability, `swarm_requestAccess` included, shows the unlock prompt while
+the identity vault is sealed (§2) and rejects `4100 locked` when it is
+dismissed (`SPEC.md` §6.11).
 
 Sugar is upstream's (`window.swarm.publishData(...)` etc.). No `window.dapp`
 sugar exists for this provider. Upload progress stays
@@ -301,10 +309,9 @@ The explorer's four slots (`SPEC.md` §10.5):
    (`providers/files.md` §8.7); when a file authored by the same dapp, of
    either mark, has that CID, the host writes the Swarm publication record
    on it with `verified: true` (`providers/files.md` §8.6; §9.4 above). One hash
-   per publish. While the vault is sealed the index is unreadable
-   (`SPEC.md` §6.11) and no match is made, so a publish made then leaves
-   no record; the dapp can report it with `files_setPublication`. Safe
-   values are never matched: a safe holds no files.
+   per publish. An added dapp's publish never runs while the vault is
+   sealed (item 12), so the index is readable whenever the match is made.
+   Safe values are never matched: a safe holds no files.
 6. The host MUST apply the dapp key as the Swarm permission key. They are
    the same function (`SPEC.md` §3.2), in the development realm too, where
    it emits `dev:<label>:<port>` (`SPEC.md` §3.6), so no store re-keys, nothing
@@ -313,7 +320,8 @@ The explorer's four slots (`SPEC.md` §10.5):
 7. The host MUST log every publish, feed write, SOC write and send to the
    dapp's activity log (`SPEC.md` §6.12).
 8. On a tab Freedom Agent holds, the host MUST apply the custody rule to
-   every Swarm write (`SPEC.md` §9.2).
+   every Swarm write: each is prompted, and for an added dapp a refused
+   one is `4100 agent_custody` (`SPEC.md` §9.2).
 9. The host MUST reject every non-public Swarm call for the dapp while an
    update notice is pending (`4100 update_pending`), and while the dapp or
    the row is paused (`4100 disabled`).
@@ -326,6 +334,11 @@ The explorer's four slots (`SPEC.md` §10.5):
     the timer after every signed Swarm operation in
     `swarm-provider-ipc.js`, so a site with auto-approve on could hold the
     vault open by writing; this closes that.
+12. While the identity vault is sealed the host MUST NOT answer any call
+    of an added dapp that needs the connection or a row: it shows the
+    unlock prompt first, under always-allow too (`SPEC.md` §6.11).
+    Methods that require nothing, and sites without a record, are as
+    shipped.
 
 *Informative.* Upstream modules: `src/main/swarm/swarm-provider-ipc.js`
 (authority), `permission-manifests.js` (generalised by the core fetcher),
@@ -365,6 +378,12 @@ Conformance checklist (`examples/swarm/`):
       sheet;
 - [ ] a feeds row with the vault locked yields the unlock prompt on the
       first `swarm_createFeed`, then the write;
+- [ ] before the first unlock of a session, an added dapp's
+      `swarm_requestAccess`, publish or send shows the unlock prompt, under
+      always-allow too, and `4100 locked` on dismiss; the public reads are
+      unaffected;
+- [ ] on an Agent-held tab a write refused on its prompt is `4100
+      agent_custody` for an added dapp;
 - [ ] `swarm_publishData` of a stored file's bytes writes
       `publications.swarm` with `verified: true` and the file reads
       `location: "published"` (§9.4, §10 item 5);

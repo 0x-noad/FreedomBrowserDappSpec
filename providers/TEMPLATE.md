@@ -26,6 +26,8 @@
 - **Identity vault.** <Which capabilities need the vault unlocked, so that
   `SPEC.md` §6.11 applies to them; "none" if none. Say too whether the
   provider's data waits only on the first unlock of a session (sealed).
+  Before that first unlock no added dapp is connected, whatever the
+  provider (`SPEC.md` §6.11); name the methods that still answer.
   The vault's existence is required for every grant by the core, not by
   the provider.>
 - **Offline.** <What works with no network (`SPEC.md` §1.5).>

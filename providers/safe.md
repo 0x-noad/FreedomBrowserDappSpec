@@ -75,7 +75,7 @@ anything is sent. `item` below means:
 `size` is the stored length in bytes: the UTF-8 length of that JSON text,
 or the byte length. The 8 MB cap and `used` count it. `etag` is an opaque
 string derived from the stored bytes: it changes whenever they do, and
-rewriting an identical value keeps it.
+rewriting an identical value keeps it, though `mtime` moves.
 
 | method | params | returns | requires | user gesture | rate limit | timeout |
 |---|---|---|---|---|---|---|
@@ -123,13 +123,14 @@ budget rejects `-32005` with `data.retryAfterMs`.
 Raised for every change to the dapp's safe that a subscription matches: by any
 tab of the dapp, the calling document included, or by the user on the details
 page (§9.2). A document receives one event per change, however many of its
-subscriptions match. `etag` is the new etag for `set`. Nothing is delivered
-while the vault is locked or sealed, while a notice of `SPEC.md` §5 is
-unanswered or the build has no valid manifest, while the dapp or the
-capability is paused (`SPEC.md` §7.5), or on a tab Freedom Agent holds before
-the user has allowed safe reads there (`SPEC.md` §9.2), and nothing is
-replayed afterwards; a subscription survives the lock and the dapp refreshes
-on `identityChanged` (`SPEC.md` §6.11).
+subscriptions match. `etag` is the new etag for `set`. A `set` raises the
+event even when the value is identical to the stored one: the etag is the same
+and `mtime` has moved. Nothing is delivered while the vault is locked or
+sealed, while a notice of `SPEC.md` §5 is unanswered or the build has no valid
+manifest, while the dapp or the capability is paused (`SPEC.md` §7.5), or on a
+tab Freedom Agent holds before the user has allowed safe reads there
+(`SPEC.md` §9.2), and nothing is replayed afterwards; a subscription survives
+the lock and the dapp refreshes on `identityChanged` (`SPEC.md` §6.11).
 
 ## 6. Manifest block
 
@@ -241,7 +242,9 @@ deleted by revocation.
 **export** first. On OK the safe and its index are unlinked. The safe is wiped
 at once whatever the vault's state: its blobs are its own and its index goes
 with them. A safe held from a previous build (§8.7) is named in the confirm,
-covered by the export and deleted with the dapp.
+covered by the export and deleted with the dapp. A safe of the dapp's left
+unreadable by a change of identity (`SPEC.md` §6.11) is named in the confirm
+with its size, cannot be exported, and is deleted with the dapp too.
 
 **Export** writes a decrypted copy to a folder the user chooses: one file
 per key (a JSON value as JSON text, bytes as they are) and an `index.json`
@@ -392,7 +395,8 @@ Conformance checklist (`examples/safe/`):
       and deletes nothing; removal follows §8.6 including the export
       offer, and wipes the safe even while the vault is locked;
 - [ ] `ifMatch` on an absent key is `conflict`; rewriting an identical
-      value keeps the etag; `size` is the UTF-8 length of the JSON text;
+      value keeps the etag and still raises `safe:changed`; `size` is
+      the UTF-8 length of the JSON text;
       keys list in code-point order; a value `JSON.stringify` cannot
       serialise is `invalid_value`; a 61st subscription is
       `too_many_subscriptions`;

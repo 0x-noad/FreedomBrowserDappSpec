@@ -40,6 +40,7 @@
       <li>Re-add with always-allow <b>off</b>: each publish, feed write and send prompted in the dApps pane, naming size and content type, feed name and payload size, or kind, topic and payload size.</li>
       <li>With no Swarm row ticked, <code>swarm_requestAccess</code> reopened the unified sheet with the Swarm rows, never the shipped connect prompt.</li>
       <li>With the identity vault locked, the first <code>swarm_createFeed</code> showed the unlock prompt, then completed.</li>
+      <li>After restarting Freedom and before unlocking: the <b>dApp</b> label was grey with a dot, the run’s first step showed the unlock overlay over the dApps pane, and after unlocking the label turned purple and the run completed, always-allow or not.</li>
       <li>The details page lists the publisher identity (app-scoped), the feed <code>spec-check</code>, and the publish history entries from this run.</li>
       <li>The Wallet tab’s Swarm row is unchanged for this dapp, as it is for a site with only a <code>freedom-manifest/1</code>.</li>
       <li>Revoking <code>swarm:feeds</code> on the details page removes the grant and keeps the feed record (<code>swarm_listFeeds</code> still returns it).</li>
