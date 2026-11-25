@@ -230,7 +230,7 @@ const grant = await window.dapp.requestCapabilities({
 });
 ```
 
-- On the first call the consent sheet opens in Freedom's Dapps pane. Until
+- On the first call the consent sheet opens in Freedom's dApps pane. Until
   the user answers, any capability-gated call rejects `4100 unauthorized`;
   nothing prompts on its own.
 - On a later visit, if you ask for **exactly** what you hold, it resolves at
@@ -258,8 +258,8 @@ A shared file you already know by `{ author, name }` reads directly,
 whatever its type; another dapp's private file is simply `not_found`.
 
 - A decline is `4001` and is cached for the document: do not re-prompt in a
-  loop; tell the user they can reopen the sheet from the `d` in the address
-  bar, or reload.
+  loop; tell the user they can reopen the sheet from the **dApp** label in the
+  address bar, or reload.
 - Listen for `capabilitiesChanged`: the user can pause or revoke anything at
   any time from the details page.
 
@@ -358,7 +358,7 @@ Things to know:
   Use it as an etag and as a stable id you can hand to other dapps.
 - **Quotas are the user's**, never a manifest's. Your allowance covers all
   your files, both marks. A write that needs more room than your allowance
-  asks the user for you, in the Dapps pane, while your call waits (up to 300
+  asks the user for you, in the dApps pane, while your call waits (up to 300
   s): you get the normal result if they raise it, or `4300 dapp_quota` if they
   decline, as if nothing had been asked. Wrap writes in try/catch and treat
   `4300` as "no room"; never retry it in a loop, a decline is remembered until
@@ -444,7 +444,7 @@ Freedom never tells a dapp whether something it cannot see exists:
 ## 5. Developing locally
 
 Turn on the **developer setting**, under **Developer settings** at the
-bottom of Freedom's Dapps pane (sidebar). Then serve your build at
+bottom of Freedom's dApps pane (sidebar). Then serve your build at
 `http://<label>.localhost[:port]`, for example
 `http://notebook.localhost:8767/`. Freedom treats it as a dapp with the key
 `dev:notebook:8767` (the port is part of the key: any local server can
@@ -467,9 +467,11 @@ heading on every page and can be wiped in one action.
 manifest is fetched once per build; for a name, Freedom resolves the root
 reference on every load and fetches the manifest only when it changed.
 
-**On the first visit** the user sees a grey `d` in the address bar. Nothing
-prompts until you call `requestCapabilities` or they click the `d` and
-press Add. Design your first screen to make sense before any grant.
+**On the first visit** the user sees a grey **dApp** label in the address bar
+(just **d** where the bar is narrow). Nothing prompts until you call
+`requestCapabilities` or they click the label and press Add; it turns purple
+once your dapp is connected. Design your first screen to make sense before any
+grant.
 
 **When you ship a new build** under a name, Freedom notices the root
 reference changed and shows an **update notice** before the new build may

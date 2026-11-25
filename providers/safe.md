@@ -228,7 +228,7 @@ Appendix A).
 ### 8.4 Accounting
 
 The details page shows the dapp's safe usage of 64 MB and its key count
-(§9.2); the Dapps pane sums safe usage across dapps (`SPEC.md` §10.2).
+(§9.2); the dApps pane sums safe usage across dapps (`SPEC.md` §10.2).
 
 ### 8.5 On revoke
 

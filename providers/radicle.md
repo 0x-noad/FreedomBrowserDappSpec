@@ -7,7 +7,7 @@ reports `specVersion: '0.2'`), which this document treats as normative for
 the API and summarises. What this document adds are the **integration
 points**: a `capabilities.radicle` manifest block (new; upstream reads no
 manifest for Radicle), grants written by the unified consent sheet, per-call
-prompts in the Dapps pane, per-dapp seed records, and the details-page
+prompts in the dApps pane, per-dapp seed records, and the details-page
 listing.
 
 Reads of repository data are not part of the provider: any page fetches
@@ -205,7 +205,7 @@ exception: the limit is new and uses the core `-32005`.
 - **Quota.** None: seeding commits the user's disk and bandwidth per
   repository and is consented per repository or by always-allow.
 - **Accounting.** The details page lists the repos the dapp seeded; the
-  Dapps pane's storage figures do not include Radicle storage.
+  dApps pane's storage figures do not include Radicle storage.
 - **On revoke** (a row revoked or the dapp paused): as the shipped
   disconnect for that tier: the grant and its auto-approve are removed,
   `disconnect` fires when the connection goes. Seeding policies are **not**
@@ -227,7 +227,7 @@ this disclosure, verbatim: *"This dapp will author content as you on the
 Radicle network. Writes cannot be recalled once announced."*
 
 Per-call prompts for rows granted through the unified sheet keep the shipped
-prompt screens and render in the sidebar with the Dapps tab active
+prompt screens and render in the sidebar with the dApps tab active
 (`SPEC.md` §10.2). They name: for a seed or unseed, the RID and the
 repo's name where known, and for an unseed of a user-seeded repo the words
 "you seeded this yourself"; for a write, the kind (issue, comment, state
@@ -266,7 +266,7 @@ None: Radicle holds no stored-file records, verbs or panel
 4. The host MUST prompt every `radicle_unseed` of a repo with no dapp
    record, whatever the `node` always-allow state.
 5. The host MUST show per-call prompts for unified-sheet grants on the
-   shipped prompt screens with the sidebar switched to the Dapps tab
+   shipped prompt screens with the sidebar switched to the dApps tab
    (`SPEC.md` §10.2), with the facts of §9.1, and keep the shipped surfaces
    for non-dapp origins. The dapp key is the Radicle permission key in the
    development realm too (`SPEC.md` §3.6).
@@ -310,7 +310,7 @@ Conformance checklist (`examples/radicle/`):
       without a per-repo prompt, and `radicle_createIssue` write without a
       prompt;
 - [ ] with always-allow off, seed, unseed and each write prompt on the
-      shipped screen with the Dapps tab active, with the facts of §9.1;
+      shipped screen with the dApps tab active, with the facts of §9.1;
 - [ ] no Radicle row ticked leaves the key unconnected and
       `radicle_requestAccess` opens the unified sheet again, never the
       shipped connect prompt;

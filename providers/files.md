@@ -312,11 +312,11 @@ user adds in `freedom://files` and files Freedom Agent adds are always
 shared. A new dapp file is shared unless its writer says otherwise (§4).
 
 **Quota.** Each dapp has an **allowance, default 1 GB**, covering all its
-files of either mark, set on the dapp's details page (presets 1 GB, 2 GB,
-4 GB, 8 GB), inside a **pool cap, default 8 GB**, covering every file in
-the pool, set in the Dapps pane (presets 4 GB, 8 GB, 16 GB, 32 GB). An
-allowance never exceeds the cap; neither is requestable by a dapp.
-**512 MB per file.** No count cap beyond quota.
+files of either mark, set on the dapp's details page (presets 1 GB, 2 GB, 4
+GB, 8 GB), inside a **pool cap, default 8 GB**, covering every file in the
+pool, set in the dApps pane's Settings (presets 4 GB, 8 GB, 16 GB, 32 GB). An
+allowance never exceeds the cap; neither is requestable by a dapp. **512 MB
+per file.** No count cap beyond quota.
 
 ### 8.2 `files_getQuota`
 
@@ -424,7 +424,7 @@ A).
 ### 8.8 Accounting
 
 The details page shows the dapp's usage of its allowance, split by mark,
-and sets the allowance (§9.2); the Dapps pane shows the pool's usage of
+and sets the allowance (§9.2); the dApps pane shows the pool's usage of
 its cap and sets the cap. The host offers each as a preset chooser
 (allowance: 1 GB, 2 GB, 4 GB, 8 GB; cap: 4 GB, 8 GB, 16 GB, 32 GB) and MAY
 accept a custom figure. Lowering a figure below current usage is allowed
@@ -432,35 +432,33 @@ and deletes nothing: writes fail `4300` until usage falls under it. An
 allowance is clamped to the cap. A write over both the allowance and the
 cap is `dapp_quota` (§7 gives the order).
 
-**The storage prompt.** A write that would exceed the dapp's allowance
-does not fail at once when raising the allowance would let it through. It
-applies to every call that adds bytes under the dapp's author: `write`,
-`writeJson` and `copy`; `rename`, `setVisibility` and `setPublication` add
-none and never prompt. When the allowance is below the pool cap and the
-write fits the pool, the host shows a prompt in the Dapps pane (`SPEC.md`
-§10.2), "<name> needs more storage", with the allowance, the usage, the
-size of the write and the figures the user may pick: the presets above
-the current allowance that are enough for the write, and the cap itself
-when it is not a preset. When no figure under the cap is enough there is
-no prompt, just `4300 dapp_quota`. One tap sets the allowance and the
-write proceeds, returning its normal result; the call waits as any
-prompting call does (`SPEC.md` §7.11, 300 s). The prompt is bound to its
-tab like a sheet (`SPEC.md` §6.7): raised from a background tab, or while
-the sidebar is closed, it waits, recallable from the `d` indicator, until
-its tab is fronted and the sidebar open or the wait ends. **Not now**, the
-end of the wait, or closing the sidebar while the prompt is on screen
-rejects the write `4300 dapp_quota` exactly as if nothing had been asked,
-and the decline is cached for the document like a consent decline
-(`SPEC.md` §6.6): further over-allowance writes reject at once until
-reload. No prompt when the write would also exceed the pool cap (the cap
-is set in the pane), under Freedom Agent custody (`SPEC.md` §9.2), or on
-a call without a user gesture in the last 60 s. While the identity vault
-is locked the prompt is shown as usual and its accept raises a figure, so
-the unlock prompt follows it (`SPEC.md` §6.11); a dismissed unlock is the
-same `4300 dapp_quota` as **Not now**. The dapp needs no new call: it
-wraps the write and treats `4300` as "no room". The prompt is the user
-setting a figure, not a grant: nothing is recorded beyond the new
-allowance.
+**The storage prompt.** A write that would exceed the dapp's allowance does
+not fail at once when raising the allowance would let it through. It applies
+to every call that adds bytes under the dapp's author: `write`, `writeJson`
+and `copy`; `rename`, `setVisibility` and `setPublication` add none and never
+prompt. When the allowance is below the pool cap and the write fits the pool,
+the host shows a prompt in the dApps pane (`SPEC.md` §10.2), "<name> needs
+more storage", with the allowance, the usage, the size of the write and the
+figures the user may pick: the presets above the current allowance that are
+enough for the write, and the cap itself when it is not a preset. When no
+figure under the cap is enough there is no prompt, just `4300 dapp_quota`. One
+tap sets the allowance and the write proceeds, returning its normal result;
+the call waits as any prompting call does (`SPEC.md` §7.11, 300 s). The prompt
+is bound to its tab like a sheet (`SPEC.md` §6.7): raised from a background
+tab, or while the sidebar is closed, it waits, recallable from the address-bar
+indicator, until its tab is fronted and the sidebar open or the wait ends.
+**Not now**, the end of the wait, or closing the sidebar while the prompt is
+on screen rejects the write `4300 dapp_quota` exactly as if nothing had been
+asked, and the decline is cached for the document like a consent decline
+(`SPEC.md` §6.6): further over-allowance writes reject at once until reload.
+No prompt when the write would also exceed the pool cap (the cap is set in the
+pane), under Freedom Agent custody (`SPEC.md` §9.2), or on a call without a
+user gesture in the last 60 s. While the identity vault is locked the prompt
+is shown as usual and its accept raises a figure, so the unlock prompt follows
+it (`SPEC.md` §6.11); a dismissed unlock is the same `4300 dapp_quota` as
+**Not now**. The dapp needs no new call: it wraps the write and treats `4300`
+as "no room". The prompt is the user setting a figure, not a grant: nothing is
+recorded beyond the new allowance.
 
 ### 8.9 On revoke
 
@@ -576,8 +574,8 @@ reads or lists a private file.
   of that name and no one else's. The tools surface the Files errors of §7 to
   the Agent as tool errors. While the vault is sealed they fail with `locked`:
   the Agent cannot raise the unlock prompt.
-- **Where.** Both switches live in `freedom://files` and in the Dapps
-  pane's toggles, as one record.
+- **Where.** Both switches live in `freedom://files` and in the dApps
+  pane's Settings, as one record.
 - **Detection.** An Agent read raises no `files:changed`, appears in no
   listing and moves no counter: dapps cannot detect it and are told to
   treat the shared folder as published. An Agent add is an ordinary change
@@ -701,7 +699,7 @@ Conformance checklist (`examples/files/`):
       narrow a type query; `author: "self"` lists the dapp's own files of
       both marks whole, and `visibility` narrows it;
 - [ ] `ifMatch` and `ifNoneMatch` produce `4409 conflict` and `4409 exists`;
-- [ ] the storage presets appear in the Dapps pane (4/8/16/32 GB) and on the
+- [ ] the storage presets appear in the dApps pane (4/8/16/32 GB) and on the
       details page (1/2/4/8 GB) and take effect on the next write;
 - [ ] the allowance, the pool cap and the 512 MB per-file cap produce the
       three `4300` reasons with `data.limit` and `data.actual`, and the

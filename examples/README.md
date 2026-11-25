@@ -3,7 +3,7 @@
 One minimal static dapp per provider. Each is a conformance fixture for its
 provider document's §11 checklist: open it in Freedom, press **Add** on the
 consent sheet, press **Run**, and read the table. Rows marked *manual* need
-the user to look at the Dapps pane, the details page or `freedom://files`;
+the user to look at the dApps pane, the details page or `freedom://files`;
 the page cannot see those.
 
 | Folder | Exercises | Needs |
@@ -17,7 +17,7 @@ Every example is plain HTML and JavaScript with relative paths, so it can be
 served from any dapp scheme unchanged:
 
 - **Development realm** (fastest): turn on the developer setting in the
-  Dapps pane's Developer settings group, run `node examples/serve.js`
+  dApps pane's Developer settings section, run `node examples/serve.js`
   (port 8767 by default) and open `http://safe.localhost:8767/`,
   `http://files.localhost:8767/`, `http://swarm.localhost:8767/` or
   `http://radicle.localhost:8767/`. The

@@ -6,7 +6,7 @@ upstream `docs/swarm-provider-api.md` (spec version `1.0`), which this
 document treats as normative for the API and summarises rather than
 restates. What this document adds are the **integration points** by which a
 dapp's Swarm rights are declared in the `/2` manifest, granted on the
-unified consent sheet, prompted for in the Dapps pane, listed on the details
+unified consent sheet, prompted for in the dApps pane, listed on the details
 page, and linked back to the dapp's files.
 
 Everything not stated here is inherited from `SPEC.md` §7 where it applies
@@ -212,7 +212,7 @@ rate_limited` rather than `-32005`; the `-32002` code exists; `connect`,
 - **Quota.** None in this specification: Swarm writes spend the user's
   postage, bounded by the shipped size limits (§4.1).
 - **Accounting.** The details page shows publish history with sizes and
-  the feed list; the Dapps pane's storage figures do not include Swarm.
+  the feed list; the dApps pane's storage figures do not include Swarm.
 - **On revoke** (a row revoked or the dapp paused): as the shipped
   disconnect for that tier: the grant and its auto-approve are removed,
   the key's live subscriptions close when messaging is revoked, `disconnect`
@@ -236,11 +236,11 @@ while locked; when the vault locks later, a feeds or signing write shows
 the unlock prompt (`SPEC.md` §6.11).
 
 Per-call prompts for rows granted through the unified sheet keep the shipped
-prompt screens and render in the sidebar with the Dapps tab active
+prompt screens and render in the sidebar with the dApps tab active
 (`SPEC.md` §10.2). They name: for a publish, the size and content
 type (or file count and total size); for a feed write, the feed name and
 payload size; for a SOC write, the identifier and size; for a send, the
-kind, topic and payload size. The `d` indicator shows the waiting state.
+kind, topic and payload size. The address-bar indicator shows the waiting state.
 
 ### 9.2 Details page
 
@@ -257,7 +257,7 @@ Nothing new is stored for this; the index reads the three Swarm stores.
 
 ### 9.3 Sidebar
 
-The Wallet tab's Swarm status row is unchanged for an added dapp; the Dapps
+The Wallet tab's Swarm status row is unchanged for an added dapp; the dApps
 pane's connection banner (`SPEC.md` §10.2) shows the dapp's Swarm
 capabilities beside it. Nothing in the wallet UI depends on the dapp
 record.
@@ -292,7 +292,7 @@ The explorer's four slots (`SPEC.md` §10.5):
    core fetcher (`SPEC.md` §4.7), and MUST keep the shipped `/1` path for
    `/1` sites.
 4. The host MUST show per-call prompts for unified-sheet grants on the
-   shipped prompt screens with the sidebar switched to the Dapps tab
+   shipped prompt screens with the sidebar switched to the dApps tab
    (`SPEC.md` §10.2), with the material facts of §9.1, and MUST keep the
    shipped prompt surfaces for `/1` sites.
 5. The host MUST, in the main-process `swarm_publishData` path and
@@ -331,7 +331,7 @@ The explorer's four slots (`SPEC.md` §10.5):
 (authority), `permission-manifests.js` (generalised by the core fetcher),
 `swarm-permissions.js`, `feed-store.js`, `publish-service.js` (the
 publication-record CID match, §10 item 5),
-`src/renderer/lib/swarm-provider.js` (consent routing to the Dapps pane for
+`src/renderer/lib/swarm-provider.js` (consent routing to the dApps pane for
 `/2` dapps).
 
 ## 11. Security considerations and conformance checklist
@@ -357,7 +357,7 @@ Conformance checklist (`examples/swarm/`):
       on, makes `swarm_requestAccess` resolve without a prompt and
       `swarm_getCapabilities` report the granted state;
 - [ ] the same with always-allow off makes each tier method prompt on the
-      shipped screen with the Dapps tab active, with the facts of §9.1;
+      shipped screen with the dApps tab active, with the facts of §9.1;
 - [ ] no Swarm row ticked leaves the key unconnected and
       `swarm_requestAccess` opens the unified sheet again, never the
       shipped connect prompt;

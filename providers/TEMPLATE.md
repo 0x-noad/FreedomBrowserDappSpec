@@ -112,7 +112,7 @@ Binary or other conventions that differ from `SPEC.md` §7: <state them, or
 - **What is stored per dapp key**, and where in the host's data (opaque,
   encrypted at rest per `SPEC.md` §8.1 where the provider holds dapp bytes).
 - **Quota**: the `<id>_getQuota` shape (`SPEC.md` §8.2) and the limits.
-- **Accounting**: what the details page and the Dapps pane show for this
+- **Accounting**: what the details page and the dApps pane show for this
   provider (`SPEC.md` §8.3).
 - **On revoke**: what ends (subscriptions), what stays (data).
 - **On remove** (`SPEC.md` §8.4): what is deleted, what is offered for

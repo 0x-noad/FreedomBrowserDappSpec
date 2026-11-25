@@ -22,7 +22,7 @@ through `window.dapp` (§7) and, where it uses them, the shipped globals
 `window.swarm`, `window.radicle` and `window.ethereum`.
 
 1.2. This specification is **Freedom-specific**. The page names
-`freedom://dapps` and `freedom://files`, the sidebar's Dapps pane, and the
+`freedom://dapps` and `freedom://files`, the sidebar's dApps pane, and the
 provider set in §12 are normative. Another host MAY implement it; §7.1 says
 how such a host identifies itself.
 
@@ -39,7 +39,7 @@ details page, and the seed and publication records described in Appendix A and
 in `providers/radicle.md` and `providers/files.md`).
 
 1.5. **Local-first.** Safe and Files reads, the launcher, the details page and
-the Dapps pane MUST work with no network. Operations that need a node (Swarm
+the dApps pane MUST work with no network. Operations that need a node (Swarm
 publishing, Radicle sync) MUST fail with a clear `4900` error rather than
 hang.
 
@@ -164,11 +164,11 @@ answers for every `*.localhost` host: a page that another local server (a
 third-party dev server, the bundled node's own gateway) serves under the label
 `game` is a different dapp with no data, not an impostor drawing prompts under
 `dev:game:8080`'s identity. A dev server that moves to another port is
-therefore a new dapp with no data; **Wipe dev data** (§10.8) clears
-the old one. The setting lives in the Dapps pane, inside a collapsed
-**Developer settings** group (§10.2), and not on the Settings page; while it
-is on, the pane shows a persistent tag outside the group. While it is on, the
-host's key function (in Freedom, `getPermissionKey`) MUST itself return
+therefore a new dapp with no data; **Wipe dev data** (§10.8) clears the old
+one. The setting lives in the dApps pane, under its **Developer settings**
+header (§10.2), and not on the browser's Settings page; while it is on, the
+pane shows a persistent tag on that header. While it is on, the host's key
+function (in Freedom, `getPermissionKey`) MUST itself return
 `dev:<label>:<port>` for such an origin, so that every store keyed by dapp
 key, the shipped Swarm and Radicle stores included, agrees on the key with no
 mapping layer; while it is off, the origin is an ordinary `http` origin to
@@ -399,7 +399,7 @@ being written, and this is how those changes reach the user.
 ### 5.3 The update notice
 
 A different reference means the dapp changed. The host MUST show an **update
-notice** in the Dapps pane (§10.2) before the new build may use anything. The
+notice** in the dApps pane (§10.2) before the new build may use anything. The
 notice opens with one plain sentence. For a signed dapp whose key is the same
 or rotated with the old key's endorsement (§4.6): "This dapp's contents have
 been changed by its author." For an unsigned dapp: "This dapp has changed
@@ -562,7 +562,7 @@ consent sheet. `capabilities` is an array of `{ id, scope? }`.
 
 ### 6.5 The consent sheet
 
-The sheet renders in the Dapps pane (§10.2). It MUST show:
+The sheet renders in the dApps pane (§10.2). It MUST show:
 
 1. **Header.** The dapp key as the identity (a raw reference truncated with a
    copy affordance); a realm tag when `dev:`; the manifest icon and `name` as
@@ -778,7 +778,7 @@ into those providers' own stores. `swarm_requestAccess` and
 added dapp whose rows are not held, they open the unified sheet again
 rather than the shipped connect prompt (provider documents, §3). Per-call
 prompts for Swarm and Radicle rows granted through the unified sheet keep
-their shipped prompt screens and render in the sidebar with the Dapps tab
+their shipped prompt screens and render in the sidebar with the dApps tab
 active (§10.2).
 
 **The wallet is beside this specification, not in it.** `window.ethereum`
@@ -1012,7 +1012,7 @@ set by the user; a manifest never requests one.
 
 ### 8.3 Accounting
 
-Each provider reports, for the details page and the Dapps pane, the bytes
+Each provider reports, for the details page and the dApps pane, the bytes
 each dapp holds under it, broken down as its document defines. The pane's
 summary header sums them.
 
@@ -1048,8 +1048,8 @@ The user can grant and revoke Freedom Agent **read** access to their
 shared files (every file marked shared, `providers/files.md` §8.1), a
 plain switch like a dapp's `files:read` grant, and separately **add**
 access (files it adds carry author `agent` and are always shared). Both
-are **off by default**, live in `freedom://files` and in the Dapps pane's
-toggles as one record, survive restarts until revoked, and are exercised
+are **off by default**, live in `freedom://files` and in the dApps pane's
+Settings as one record, survive restarts until revoked, and are exercised
 through three Agent tools (`dapp_files_list`, `dapp_files_read`,
 `dapp_files_add`) whose contract `providers/files.md` §9.4 defines. The
 Agent never reads a private file and never a safe. An Agent read is
@@ -1085,29 +1085,39 @@ which is one more reason secrets belong in the Safe.
 ### 10.1 The address-bar indicator
 
 On every tab whose top-level document is on a dapp scheme (or a `dev:`
-origin), the host shows a letter **`d`** in the address bar: hidden when the
-site is not a dapp, **grey** when it is a dapp that is not connected (not
-added, paused, or a prompt or update is waiting, with a small dot for the
-waiting states), **blue** when connected. Clicking it opens the sidebar on
-the Dapps pane. The user MAY hide it from the pane's toggles; the pane's
-banner still offers **Add**.
+origin), the host shows the label **dApp** in the address bar: hidden when
+the site is not a dapp, **grey** when it is a dapp that is not connected
+(not added, paused, or a prompt or update is waiting, with a small dot for
+the waiting states), **purple** (`#8b5cf6`) when connected. Clicking it
+opens the sidebar on the dApps pane. Where the address bar is too narrow
+for the label (a narrow window, a phone), the host MAY show the letter
+**d** alone, with the same colours and behaviour. The indicator is always
+shown on such a tab: no setting hides it. Its accessible name says the
+state in words, since colour alone does not.
 
-### 10.2 The Dapps pane
+**The connected colour.** Purple `#8b5cf6` means "this dapp is connected"
+on every surface of this section, and the surfaces use it for nothing
+else. In this revision it marks the indicator, the dot of the pane's
+connection banner, and a dapp's row in the pane's list while that dapp is
+connected in an open tab (§10.2). A surface that comes to mark connection
+uses the same colour.
 
-A **Dapps** tab in the sidebar beside Wallet, Nodes and Settings. **Every dapp
-prompt renders in the sidebar with this tab active**: the consent sheet
-(§6.5), the update notice (§5.3), the signing-key warning (§5.7), the storage
-prompt (`providers/files.md` §8.8), the **create identity** step (§6.4) and
-the Agent-custody prompts (§9.2) render inside the pane; the **unlock prompt**
-(§6.11) is the host's existing one and covers the sidebar whichever tab is
-active; per-call prompts for Swarm and Radicle rows granted through the
-unified sheet keep their shipped prompt screens, which cover the sidebar
-whichever tab is active, and the host MUST switch the sidebar to this tab
-before showing one. The sidebar opens when a prompt arrives; the page is not
-dimmed; the call waits up to 300 s. Wallet transaction and signature approvals
-stay in the Wallet pane.
+### 10.2 The dApps pane
 
-The sidebar offers the Dapps tab before any identity vault exists, but a
+A tab titled **dApps** in the sidebar beside Wallet, Nodes and Settings.
+**Every dapp prompt renders in the sidebar with this tab active**: the consent
+sheet (§6.5), the update notice (§5.3), the signing-key warning (§5.7), the
+storage prompt (`providers/files.md` §8.8), the **create identity** step
+(§6.4) and the Agent-custody prompts (§9.2) render inside the pane; the
+**unlock prompt** (§6.11) is the host's existing one and covers the sidebar
+whichever tab is active; per-call prompts for Swarm and Radicle rows granted
+through the unified sheet keep their shipped prompt screens, which cover the
+sidebar whichever tab is active, and the host MUST switch the sidebar to this
+tab before showing one. The sidebar opens when a prompt arrives; the page is
+not dimmed; the call waits up to 300 s. Wallet transaction and signature
+approvals stay in the Wallet pane.
+
+The sidebar offers the dApps tab before any identity vault exists, but a
 dapp cannot be added until one does (§6.11): the connection banner for a
 dapp then shows **Create identity** in place of **Add**, with the line
 "Dapps keep their data under your identity", and opens the host's identity
@@ -1115,31 +1125,44 @@ onboarding; a `dapp_requestCapabilities` call waits for it (§6.4). Once
 onboarding completes the sheet proper follows. While the vault is locked
 the pane is usable and its widening controls prompt for unlock (§10.7).
 
-At rest, top to bottom:
+At rest, top to bottom: the connection banner, then four sections under
+the headers **SUMMARY**, **DAPPS**, **SETTINGS** and **DEVELOPER
+SETTINGS**. Each header collapses and expands its section, and the host
+keeps each one's state per profile; at first use Summary and Dapps are
+open and the other two collapsed. A prompt rendered in the pane sits in
+no section and is never hidden by a collapsed one.
 
-1. **Connection banner** for the fronted tab: indicator dot and state, one
-   of: not a dapp ("This site is not a dapp"); dapp, not added (key, name,
-   **Add**); connected (key, name, version, one line per provider with its
-   capabilities, buttons **Details**, **Pause** / **Resume**, **Files**);
-   paused; update pending (opens the notice); prompt waiting; create
-   identity (§6.11), which takes precedence over "prompt waiting" while a
-   request waits on it, since the request is what opened it. The Wallet
-   tab's own status rows (wallet connection, Swarm, auto-pay) are unchanged
-   for a dapp; nothing in the wallet UI depends on the dapp record.
+1. **Connection banner** for the fronted tab: a dot in the indicator's
+   colour (§10.1) and the state, one of: not a dapp ("This site is not a
+   dapp"); dapp, not added (key, name, **Add**); connected (key, name,
+   version, one line per provider with its capabilities, buttons
+   **Details**, **Pause** / **Resume**, **Files**); paused; update pending
+   (opens the notice); prompt waiting; create identity (§6.11), which
+   takes precedence over "prompt waiting" while a request waits on it,
+   since the request is what opened it. The Wallet tab's own status rows
+   (wallet connection, Swarm, auto-pay) are unchanged for a dapp; nothing
+   in the wallet UI depends on the dapp record.
 2. **Summary**: added dapps, disk used (safes in total; files used of the
-   pool cap, with the **Total dapp storage** control: the pool cap, offered
-   as 4 GB, 8 GB, 16 GB or 32 GB, default 8 GB, `providers/files.md` §8.1),
-   dapps with updates pending or paused, Freedom Agent shared
+   pool cap), dapps with updates pending or paused, Freedom Agent shared
    access state (off / read / read + add), and whether the identity vault
    is sealed or locked, with **Unlock**; links to `freedom://dapps` and
    `freedom://files`.
-3. **Toggles**: the Freedom Agent shared read and add switches
-   (§9.1); **Show the `d` indicator**; and a collapsed **Developer
-   settings** group holding the developer setting (§3.6) with **Wipe dev
-   data** while on. The group is the setting's only home (not the Settings
-   page, §10.6); while the setting is on, its tag shows outside the group.
+3. **Dapps**: every added dapp, one row each with its icon and name,
+   ordered by name; a row opens that dapp's details page (§10.4). The
+   list scrolls within a bounded height of its own, so the headers beneath
+   it stay in reach however many dapps there are. A dapp connected in an
+   open tab is marked in the connected colour (§10.1); `dev:` dapps sit
+   under the Development heading (§10.8). With no dapp added the section
+   says so in one line.
+4. **Settings**: the Freedom Agent shared read and add switches (§9.1),
+   and **Total dapp storage**, the pool cap, offered as 4 GB, 8 GB, 16 GB
+   or 32 GB, default 8 GB (`providers/files.md` §8.1).
+5. **Developer settings**: the developer setting (§3.6), with **Wipe dev
+   data** while it is on. This section is the setting's only home (not
+   the browser's Settings page, §10.6); while the setting is on, its tag
+   shows on the header, collapsed or not.
 
-*Informative.* The connection banner, list and usage footer follow the
+*Informative.* The connection banner, list and usage figures follow the
 pattern of Freedom's existing sidebar connection rows.
 
 ### 10.3 `freedom://dapps`
@@ -1223,7 +1246,7 @@ cap), **Export** (a decrypted copy of the selected files to a user-chosen
 location, with an `index.json` naming each file's author, mark, type and CID),
 **Delete**, and changing the mark of a dapp's file (files of `user` and
 `agent` are always shared). The **pool cap** and **each dapp's allowance** are
-shown with their usage and link to where they are set (the Dapps pane's
+shown with their usage and link to where they are set (the dApps pane's
 **Total dapp storage**, §10.2; the dapp's **Files** section, §10.4). `dev:`
 files sit under the Development heading (§10.8); private files held from a
 previous build (§5.7) are listed apart as "previous build" with **Export** and
@@ -1284,7 +1307,7 @@ disk and becomes readable again only by importing the same recovery phrase
 
 ### 10.7 Locked identity
 
-`freedom://dapps`, the details page and the Dapps pane stay open while the
+`freedom://dapps`, the details page and the dApps pane stay open while the
 identity vault is locked: every fact and every narrowing control works, and
 every widening control (§6.11) shows the unlock prompt when pressed. On a
 details page the **Safe** section shows usage with **Unlock** in place of
@@ -1521,9 +1544,9 @@ v0.8.8 each part of the core naturally lands.
   `src/main/safe/` and `src/main/files/` services, their grant stores and
   `dapps.json`. The page
   shim joins `window.swarm`'s block in `src/main/webview-preload.js`.
-  `src/renderer/lib/dapp-provider.js` draws the Dapps pane and the `d`
-  indicator; `src/renderer/lib/sidebar.js` `openForPrompt` opens the pane
-  for a prompt.
+  `src/renderer/lib/dapp-provider.js` draws the dApps pane and the
+  address-bar indicator; `src/renderer/lib/sidebar.js` `openForPrompt`
+  opens the pane for a prompt.
 - **Stores.** `dapps.json` (per dapp key: manifest record, enabled flag,
   dev-realm entries) and `files-grants.json` (per dapp key: the Safe and Files
   sub-objects) beside the shipped `swarm-permissions.json`,
