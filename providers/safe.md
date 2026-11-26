@@ -49,7 +49,7 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
 
 | id | tier | scope shape | always-allow | consent-sheet string |
 |---|---|---|---|---|
-| `safe:store` | `consent` | none | not applicable | "Keep private data for this dapp, locked with your identity" |
+| `safe:store` | `consent` | none | not applicable | "Keep private data for this dApp, locked with your identity" |
 
 `safe:store` unlocks every method on the calling dapp's own safe. There is
 no capability that reads another dapp's safe. Nothing here is `per-call`:

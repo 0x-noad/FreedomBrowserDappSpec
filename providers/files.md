@@ -61,15 +61,15 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
 | id | tier | scope shape | always-allow | consent-sheet string |
 |---|---|---|---|---|
 | `files:own` | `consent` | none | not applicable | "Store files on this device" |
-| `files:read` | `consent` | none | not applicable | "Read files other dapps shared" |
+| `files:read` | `consent` | none | not applicable | "Read files other dApps shared" |
 
 - **`files:own`** unlocks every method on the dapp's **own** files, shared
   or private: `list` and `subscribe` with `author: "self"`, `read`,
   `stat`, `readJson`, `write`, `writeJson`, `delete`, `rename`, `copy`
   into its own files, `setVisibility`, `setPublication`. A file a dapp
   writes is **shared unless the dapp marks it private** (§4), so the row
-  MUST carry this line, verbatim: *"Files this dapp stores go in your
-  shared folder, where dapps you allow can read them, unless the dapp
+  MUST carry this line, verbatim: *"Files this dApp stores go in your
+  shared folder, where dApps you allow can read them, unless the dApp
   marks them private."*
 - **`files:read`** unlocks reads (`list`, `read`, `stat`, `readJson`,
   `subscribe`, and `copy` as a source) of **shared files of every
@@ -81,7 +81,7 @@ Everything not stated here is inherited from `SPEC.md` §7 and bound by
   shared files are shared files like any other and need nothing more to
   be read. The row MUST carry
   this disclosure, verbatim: *"Everything in your shared folder, including
-  which dapp added each file, is visible to every dapp you allow to read
+  which dApp added each file, is visible to every dApp you allow to read
   it."*
 
 A dapp that only keeps its own files asks for `files:own` alone; one that
@@ -184,7 +184,7 @@ Method rules:
   Marking a shared file private withdraws it from other dapps from then
   on; what they already read they keep.
 - **`files_setPublication`.** Records a publication by `provider` on the
-  dapp's own file as dapp-reported (`verified: false`, §8.6). `provider`
+  dapp's own file as dApp-reported (`verified: false`, §8.6). `provider`
   MUST be a provider whose document declares a publication record
   (`unknown_provider`) and `ref` MUST be valid for it
   (`invalid_reference`). The record is accepted whether or not that
@@ -399,10 +399,10 @@ stored file.
   main-process publish path, when it can match the published bytes to a
   file authored by the same dapp (by CID, §8.5). `verified: true`. One
   such check per publish; the provider's own API is untouched.
-- **Dapp-reported.** The dapp calls `files_setPublication` on its own file
+- **dApp-reported.** The dapp calls `files_setPublication` on its own file
   (for a bundle whose single reference covers many files, say). The record
   carries `verified: false` and `freedom://files` labels it
-  "dapp-reported".
+  "dApp-reported".
 
 Writing a record of either kind emits `files:changed` with `kind: "published"`
 and the record as `publication` with its `provider`. A record is replaced,
@@ -507,10 +507,10 @@ offer.
 ### 9.1 Consent sheet
 
 Up to two rows, with the strings in §3. The `files:own` row carries, beneath its
-words, verbatim: *"Files this dapp stores go in your shared folder, where
-dapps you allow can read them, unless the dapp marks them private."* The
+words, verbatim: *"Files this dApp stores go in your shared folder, where
+dApps you allow can read them, unless the dApp marks them private."* The
 `files:read` row carries, verbatim: *"Everything in your shared folder,
-including which dapp added each file, is visible to every dapp you allow
+including which dApp added each file, is visible to every dApp you allow
 to read it."* Neither row has a scope to show, and the host's wording MUST
 NOT suggest one. The `why` sits beneath as always. No Files row has an
 always-allow toggle.

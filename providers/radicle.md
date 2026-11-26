@@ -230,7 +230,7 @@ exception: the limit is new and uses the core `-32005`.
 
 Up to two rows with the strings in §3, each `per-call` with an
 always-allow toggle, off by default. The `radicle:signing` row MUST carry
-this disclosure, verbatim: *"This dapp will author content as you on the
+this disclosure, verbatim: *"This dApp will author content as you on the
 Radicle network. Writes cannot be recalled once announced."*
 
 Per-call prompts for rows granted through the unified sheet keep the shipped
@@ -251,7 +251,7 @@ The **Radicle** section (`SPEC.md` §10.4) MUST show:
 
 The user's Radicle identity is not shown here: it is the user's, not the
 dapp's. When the manifest's `source` is a Radicle RID (`rad:z…`), the
-`source` row of the page's **Dapp** section opens the host's own
+`source` row of the page's **dApp** section opens the host's own
 repository page (`SPEC.md` §10.4).
 
 ### 9.3 `freedom://files`

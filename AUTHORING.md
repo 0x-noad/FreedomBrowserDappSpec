@@ -115,7 +115,7 @@ form is ignored. `web3://` pages cannot `fetch()`; on those origins only,
 Add `publicKey` (Ed25519, multibase `z…`) and `signature` (over the RFC 8785
 canonical JSON of the manifest without `signature`). Freedom shows "signed" on
 the sheet and, on every later build, tells the user the contents were changed
-by their author. An unsigned dapp carries the warning "This dapp is not signed
+by their author. An unsigned dapp carries the warning "This dApp is not signed
 by its author." on the sheet, on the details page and on every update notice.
 If a name you own is ever lost or sold, the new owner's builds will fail that
 check and users will be warned and asked to re-add from scratch.
@@ -189,11 +189,11 @@ Three places, by what the data is:
   put secrets there.
 - **A shared file**, the default, for everything else: documents, media,
   anything another dapp might use. The consent sheet tells the user, in
-  these words, under your `files:own` row: **"Files this dapp stores go in
-  your shared folder, where dapps you allow can read them, unless the dapp
+  these words, under your `files:own` row: **"Files this dApp stores go in
+  your shared folder, where dApps you allow can read them, unless the dApp
   marks them private."** And under any `files:read` row: **"Everything in
-  your shared folder, including which dapp added each file, is visible to
-  every dapp you allow to read it."** Treat a shared file as published.
+  your shared folder, including which dApp added each file, is visible to
+  every dApp you allow to read it."** Treat a shared file as published.
 
 Marking a shared file private later stops further reads; it does not
 recall what another dapp already read.
@@ -422,7 +422,7 @@ reference on it as `publications.swarm`, verified; `files:changed` fires
 with `kind: 'published'` and the record as `publication`. For a multi-file
 `publishFiles` bundle, record the root reference yourself with
 `files.setPublication({ name, provider: 'swarm', ref })`; it shows in
-`freedom://files` as dapp-reported. A future provider that publishes (IPFS,
+`freedom://files` as dApp-reported. A future provider that publishes (IPFS,
 say) gets its own key beside `swarm`; your code never has to change for it.
 
 ### Errors
@@ -471,7 +471,7 @@ heading on every page and can be wiped in one action.
 manifest is fetched once per build; for a name, Freedom resolves the root
 reference on every load and fetches the manifest only when it changed.
 
-**On the first visit** the user sees a grey **dApp** label in the address bar
+**On the first visit** the user sees a yellow **dApp** label in the address bar
 (just **d** where the bar is narrow). Nothing prompts until you call
 `requestCapabilities` or they click the label and press Add; it turns purple
 once your dapp is connected. Design your first screen to make sense before any

@@ -332,7 +332,7 @@ that user. The field may be dropped once a build with the new key has been
 approved; it is signed over like any other field. The tool's `--rotate-from`
 adds it.
 
-An unsigned dapp carries the warning "This dapp is not signed by its author."
+An unsigned dapp carries the warning "This dApp is not signed by its author."
 wherever a surface names its signing state: the consent sheet header (§6.5),
 every update notice (§5.3) and the details page (§10.4).
 
@@ -407,9 +407,9 @@ call of that dapp is answered.
 A different reference means the dapp changed. The host MUST show an **update
 notice** in the dApps pane (§10.2) before the new build may use anything. The
 notice opens with one plain sentence. For a signed dapp whose key is the same
-or rotated with the old key's endorsement (§4.6): "This dapp's contents have
-been changed by its author." For an unsigned dapp: "This dapp has changed
-since you added it." with the unsigned warning of §4.6, "This dapp is not
+or rotated with the old key's endorsement (§4.6): "This dApp's contents have
+been changed by its author." For an unsigned dapp: "This dApp has changed
+since you added it." with the unsigned warning of §4.6, "This dApp is not
 signed by its author." The notice then shows, in this order: the old and new
 manifest `version`; the capability diff when the new manifest asks for more,
 as rows the user ticks (added capabilities, and held capabilities whose scope
@@ -444,17 +444,17 @@ diff and needs no re-consent; a change to `publicKey` or `signature` is
 ### 5.6 Missing or invalid manifest
 
 A new build whose manifest is missing or invalid counts as a change. The
-notice is shown, naming the state (`missing`, or `invalid` with the
-validation error), and every always-allow is withdrawn. Its **OK** has
-nothing to apply: it acknowledges the state and dismisses the notice, and
-the recorded reference and manifest stay as they were. The grants themselves
-are kept in the record, not deleted, but because the manifest is required
-(§6.4) no call beyond the public tier works until a build with a valid
-manifest is loaded and approved: calls reject `4100 no_manifest`. For rows
-the unified sheet wrote into the shipped providers' stores, those
-providers' own rules apply (Swarm keeps the connection and prompts, as
-shipped). The dapp's tile shows "manifest missing" or "manifest invalid",
-and `dapp_getManifest` reports `pending: "missing"` or `"invalid"` (§7.4).
+notice is shown, naming the state (`missing`, or `invalid` with the validation
+error), and every always-allow is withdrawn. Its **OK** has nothing to apply:
+it acknowledges the state and dismisses the notice, and the recorded reference
+and manifest stay as they were. The grants themselves are kept in the record,
+not deleted, but because the manifest is required (§6.4) no call beyond the
+public tier works until a build with a valid manifest is loaded and approved:
+calls reject `4100 no_manifest`. For rows the unified sheet wrote into the
+shipped providers' stores, those providers' own rules apply (Swarm keeps the
+connection and prompts, as shipped). The dapp's state is **Can't read this
+dApp** (§10.1), on its tile too, and `dapp_getManifest` reports `pending:
+"missing"` or `"invalid"` (§7.4).
 
 ### 5.7 Signing-key change
 
@@ -590,7 +590,7 @@ The sheet renders in the dApps pane (§10.2). It MUST show:
    copy affordance); a realm tag when `dev:`; the manifest icon and `name` as
    a label clearly subordinate to the key; `version`; the manifest
    `description` beneath them, as author text (§11 N12); a "signed" marker
-   when the manifest carries a key, else the warning "This dapp is not signed
+   when the manifest carries a key, else the warning "This dApp is not signed
    by its author." (§4.6); a "needs Freedom spec `<n>` or newer" marker when
    `minSpecVersion` is above the host's (§4.2); an "experimental" tag on rows
    of an experimental provider (§12.3).
@@ -738,7 +738,7 @@ before it (a changed build, §5.2) is held and takes effect at the unlock
 Once unsealed, the lock never gates **files**, whatever their mark (a private
 file is kept from other dapps, not locked with the identity, and Freedom
 Agent's reads of shared files continue), nor any action that **narrows**:
-untick, revoke, always-allow off, **Pause**, **Delete**, **Remove dapp**,
+untick, revoke, always-allow off, **Pause**, **Delete**, **Remove dApp**,
 marking a file private, Agent switches off, the developer setting off, **Wipe
 dev data**. Reads of grants, manifests, usage figures and the logs (§6.12),
 and **Clear** on a log, are not gated by the lock. Any control not named
@@ -1184,7 +1184,7 @@ summary header sums them.
 
 ### 8.4 Removing a dapp
 
-**Remove dapp** on the details page MUST show a confirm that names the dapp
+**Remove dApp** on the details page MUST show a confirm that names the dapp
 and the bytes it holds under each provider, offers an **export** first (a
 decrypted copy of its safe and its files to a user-chosen location; exporting
 the safe needs the vault unlocked, §6.11), and asks whether to also remove the
@@ -1248,7 +1248,7 @@ a tab is recorded in the session log (§6.12).
 then displays, the Agent can see. The first `safe_get` or `safe_keys` from
 a document on a tab the Agent holds MUST show a prompt that names the dapp
 and carries, verbatim: *"Freedom Agent is in control of this tab and may
-see what this dapp reads from its Safe."* The answer holds for that
+see what this dApp reads from its Safe."* The answer holds for that
 document until it unloads or the Agent releases the tab: after **Allow**
 its safe reads run; after **Don't allow** they reject `4100 agent_custody`
 without asking again. Until the user allows, no `safe:changed` event is
@@ -1258,29 +1258,60 @@ which is one more reason secrets belong in the Safe.
 
 ## 10. Surfaces
 
-### 10.1 The address-bar indicator
+### 10.1 The address-bar indicator and the state colours
 
 On every tab whose top-level document is on a dapp scheme (or a `dev:`
-origin), the host shows the label **dApp** in the address bar: hidden when the
-site is not a dapp, **grey** when it is a dapp that is not connected (not
-added, paused, or waiting on a prompt, an update or the first unlock of the
-session, §6.11, with a small dot for the waiting states), **purple**
-(`#8b5cf6`) when connected. The dot is for added dapps: a site without a
-record shows none. Before the first unlock every added dapp shows it, whatever
-else is true of it, since the wait for the unlock comes before "paused" and
-"update pending". Clicking the indicator opens the sidebar on the dApps pane.
-Where the address bar is too narrow for the label (a narrow window, a phone),
-the host MAY show the letter **d** alone, with the same colours and behaviour.
-The indicator is always shown on such a tab: no setting hides it. Its
-accessible name says the state in words, since colour alone does not.
+origin), the host shows the label **dApp** in the address bar, in the
+colour of the tab's **state** (below). No other tab has the label: an
+ordinary website shows none. Clicking it opens the sidebar on the dApps
+pane. Where the address bar is too narrow for the label (a narrow window,
+a phone), the host MAY show the letter **d** alone, with the same colours
+and behaviour. No setting hides the indicator. Its accessible name is the
+state's label, since colour alone does not say it.
 
-**The connected colour.** Purple `#8b5cf6` means "a dapp, connected" on
-every surface of this section, and the surfaces use it for nothing else.
-In this revision it marks the indicator, the dot of the pane's connection
-banner, a dapp's row in the pane's list while that dapp is connected in
-an open tab, and the rows of the session log that hold what dapps did
-while connected (§10.2). A surface that comes to mark connection uses the
-same colour.
+**Colours.** Six, each with one meaning on every surface of this section,
+and used there for nothing else:
+
+| colour | value | meaning |
+|---|---|---|
+| purple | `#8b5cf6` | a dapp, connected (the **connected colour**) |
+| blue | `#3b82f6` | Freedom Agent |
+| yellow | `#eab308` | a dapp, not connected |
+| orange | `#f97316` | waiting on the user |
+| red | `#ef4444` | an issue or a warning |
+| grey | `#9ca3af` | not a dapp |
+
+**States.** A tab is in exactly one state: the first row of this table
+that is true of it. The indicator takes that row's colour; the pane's
+connection banner (§10.2) shows a dot in the same colour, the row's
+**label** and its buttons. The label is exact. The helper line is
+suggested wording, and the host MAY word it otherwise.
+
+| colour | state | label | helper line | buttons |
+|---|---|---|---|---|
+| orange | a dapp, while no identity vault exists (§6.11) | **Identity needed** | dApps keep their data under your identity. | **Create identity** |
+| orange | an added dapp, before the first unlock of the session (§6.11) | **Locked** | Unlock your identity to use dApps. | **Unlock** |
+| red | a signing-key warning is unanswered (§5.7) | **Signing key changed** | This dApp is signed by a different key than before. | **Review** |
+| red | an added dapp whose build has a missing or invalid manifest (§5.6) | **Can't read this dApp** | Its manifest is missing or invalid. | **Details** |
+| red | the manifest needs a newer specification than the host's (§4.2) | **Update Freedom** | This dApp needs a newer version of Freedom. | **Details** |
+| red | connected, and a provider under which the dapp holds a grant is unavailable (§12.4) | **Provider unavailable** | (the provider's name) is not running. Everything else still works. | **Details**, **Pause**, **Files** |
+| orange | a prompt is waiting for an answer (a consent sheet, a storage or per-call prompt, an unlock) | **Waiting for you** | This dApp is asking for something. | **Show** |
+| orange | an update notice is unanswered (§5.3) | **Update waiting** | This dApp has changed. Review it to continue. | **Review** |
+| blue | connected, on a tab Freedom Agent holds (§9.2) | **Agent in control** | Freedom Agent is controlling this tab. Every write asks you first. | **Details**, **Pause**, **Files** |
+| yellow | an added dapp that is paused (§6.9) | **Paused** | You paused this dApp. | **Resume**, **Details** |
+| yellow | a dapp that is not added | **Not connected** | Add this dApp to let it connect. | **Add** |
+| purple | an added dapp, connected | **Connected** | one line per provider, with its capabilities | **Details**, **Pause**, **Files** |
+| grey | not a dapp: a site on a dapp scheme with no valid manifest, or any other site | **Not a dApp** | This site is not a dApp. | none |
+
+A tab that is blue or red with **Provider unavailable** is still
+connected: the dapp runs, and the colour says what else is true. Wherever
+this section marks a dapp as connected away from its own tab (a row of
+the pane's list, a row of the session log, §10.2), it uses the connected
+colour.
+
+**Wording.** In every text the host shows the user the word is written
+**dApp**, plural **dApps**, as in the labels above. This document's own
+prose says "dapp".
 
 ### 10.2 The dApps pane
 
@@ -1299,13 +1330,12 @@ The sidebar opens when a prompt arrives; the page is not dimmed; the call
 waits up to 300 s. Wallet transaction and signature approvals stay in the
 Wallet pane.
 
-The sidebar offers the dApps tab before any identity vault exists, but a
-dapp cannot be added until one does (§6.11): the connection banner for a
-dapp then shows **Create identity** in place of **Add**, with the line
-"Dapps keep their data under your identity", and opens the host's identity
-onboarding; a `dapp_requestCapabilities` call waits for it (§6.4). Once
-onboarding completes the sheet proper follows. Before the first unlock of
-a session the pane shows the unlock screen alone; while the vault is
+The sidebar offers the dApps tab before any identity vault exists, but a dapp
+cannot be added until one does (§6.11): the connection banner for a dapp is
+then in the **Identity needed** state (§10.1), whose **Create identity** opens
+the host's identity onboarding; a `dapp_requestCapabilities` call waits for it
+(§6.4). Once onboarding completes the sheet proper follows. Before the first
+unlock of a session the pane shows the unlock screen alone; while the vault is
 locked afterwards the pane is usable and its widening controls prompt for
 unlock (§10.7).
 
@@ -1317,14 +1347,12 @@ Dapps and Session log are open and the other two collapsed. A prompt
 rendered in the pane sits in no section and is never hidden by a
 collapsed one.
 
-1. **Connection banner** for the fronted tab: a dot in the indicator's
-   colour (§10.1) and the state, one of: not a dapp ("This site is not a
-   dapp"); dapp, not added (key, name, **Add**); connected (key, name,
-   version, one line per provider with its capabilities, buttons
-   **Details**, **Pause** / **Resume**, **Files**); paused; update pending
-   (opens the notice); prompt waiting; create identity (§6.11), which
-   takes precedence over "prompt waiting" while a request waits on it,
-   since the request is what opened it. The Wallet
+1. **Connection banner** for the fronted tab: the tab's state as §10.1
+   defines it, drawn as a dot in the state's colour, its label, its
+   helper line and its buttons. For a dapp the banner also shows the key
+   and the name, and the version once it is added. **Review** opens the
+   notice, **Show** the waiting prompt, **Details** the details page
+   (§10.4), **Files** the explorer filtered to the dapp (§10.5). The Wallet
    tab's own status rows (wallet connection, Swarm, auto-pay) are
    unchanged for a dapp; nothing in the wallet UI depends on the dapp
    record.
@@ -1353,17 +1381,18 @@ collapsed one.
      the same rows as on the dapp's details page (§10.4), here oldest
      first as the log is;
    - **changes**, in beige: one row per change entry;
-   - **Freedom Agent**, in blue: one row per switch change, one
+   - **Freedom Agent**, in the Agent's blue (§10.1): one row per switch
+     change, one
      expandable row per Agent conversation holding the shared files it
      listed, read and added, and one expandable row per stretch the Agent
      held a dapp's tab, holding each prompt answered there;
    - **session markers**, uncoloured: locked, unlocked.
 
    Colour is never the only sign of a type: each row also names it, by
-   an icon or a word. The beige and blue shades are the host's. The
-   section scrolls within a bounded height of its own.
+   an icon or a word. The beige shade is the host's. The section scrolls
+   within a bounded height of its own.
 5. **Settings**: the Freedom Agent shared read and add switches (§9.1),
-   and **Total dapp storage**, the pool cap, offered as 4 GB, 8 GB, 16 GB
+   and **Total dApp storage**, the pool cap, offered as 4 GB, 8 GB, 16 GB
    or 32 GB, default 8 GB (`providers/files.md` §8.1).
 6. **Developer settings**: the developer setting (§3.6), with **Wipe dev
    data** while it is on. This section is the setting's only home (not
@@ -1376,11 +1405,11 @@ pattern of Freedom's existing sidebar connection rows.
 ### 10.3 `freedom://dapps`
 
 The launcher: one **tile** per added dapp with icon, name, key, version, and
-at most one badge: "update pending" (§5.3), "paused" (§6.9), "manifest
-missing" or "manifest invalid" (§5.6), "signing key changed" while the §5.7
-warning is unanswered, or "needs a newer Freedom" (§4.2). Clicking a tile
-opens the details page; a tile has no other action. `dev:` dapps appear under
-a **Development** heading (§10.8).
+at most one badge: the label of its state, in that state's colour, when the
+state is **Signing key changed**, **Can't read this dApp**, **Update
+Freedom**, **Update waiting** or **Paused** (§10.1; the first of them that
+applies). Clicking a tile opens the details page; a tile has no other action.
+`dev:` dapps appear under a **Development** heading (§10.8).
 
 ### 10.4 `freedom://dapps/<key>`
 
@@ -1394,8 +1423,8 @@ beneath the name as author text (§11 N12), and **Launch**, which navigates
 to the key's canonical URL and never to a page-supplied one. Below it the
 page is a fixed sequence of **sections**:
 
-1. **Dapp.** Version, recorded root reference, the signing key or the
-   warning "This dapp is not signed by its author." (§4.6), `homepage`,
+1. **dApp.** Version, recorded root reference, the signing key or the
+   warning "This dApp is not signed by its author." (§4.6), `homepage`,
    `source`, `author`, `minSpecVersion` (marked when above the host's,
    §4.2); **Enabled**, the whole-dapp pause (§6.9); and the **dapp
    activity log** (§6.12): the dapp's entries, newest first and grouped
@@ -1429,7 +1458,7 @@ page is a fixed sequence of **sections**:
    **Disconnect**, read from the wallet's own store and never edited
    beyond that (§6.14). The wallet is not a provider; the section is
    absent when the key has no connection.
-4. **Remove dapp**, last and set apart (§8.4).
+4. **Remove dApp**, last and set apart (§8.4).
 
 A provider adds nothing outside its own section (§12.2), and the page has
 no section other than these.
@@ -1456,7 +1485,7 @@ location, with an `index.json` naming each file's author, mark, type and CID),
 **Delete**, and changing the mark of a dapp's file (files of `user` and
 `agent` are always shared). The **pool cap** and **each dapp's allowance** are
 shown with their usage and link to where they are set (the dApps pane's
-**Total dapp storage**, §10.2; the dapp's **Files** section, §10.4). `dev:`
+**Total dApp storage**, §10.2; the dapp's **Files** section, §10.4). `dev:`
 files sit under the Development heading (§10.8); private files held from a
 previous build (§5.7) are listed apart as "previous build" with **Export** and
 **Delete** only, and a pool left unreadable by a change of identity is one
@@ -1475,7 +1504,7 @@ its widening controls (the Agent switches, §6.11).
    records** (`providers/files.md` §8.6): at most one per provider, keyed
    by provider id. The column shows the provider's display name
    ("Swarm"), several when several providers hold a record, and labels a
-   record the dapp reported itself "dapp-reported". The record's
+   record the dapp reported itself "dApp-reported". The record's
    reference format and when the host writes one are the provider's to
    say (its §9).
 2. **Inspector.** Selecting a file shows the Files facts (name, author,
@@ -1506,7 +1535,7 @@ whatever per-site management screens its shipped providers already have, for
 `/1` sites and non-dapp origins (in Freedom v0.8.8: the Swarm permission
 screen reached from the Wallet tab's Swarm row by **Manage**; Radicle has
 none, and there is no Settings-page list of either). Opened for an added dapp,
-such a screen shows the dapp's name and **Open dapp details** in place of its
+such a screen shows the dapp's name and **Open dApp details** in place of its
 inline toggles. Where the host offers deleting the vault, that confirm gains
 one sentence: dapp data stays on disk and becomes readable again only by
 importing the same recovery phrase (§6.11). Freedom v0.8.8 offers no such
@@ -1517,16 +1546,17 @@ screen.
 **Before the first unlock of a session** every surface of this section but the
 address-bar indicator shows the **unlock screen** and nothing else: the dApps
 pane, `freedom://dapps`, the details pages, `freedom://files` and
-`freedom://dapps/log`. The screen says that dapps wait for the identity to be
-unlocked and offers **Unlock**, the host's unlock prompt (§6.11). No list,
-figure or control is reachable before it, the narrowing ones included. The
-indicator is still shown, grey, with the waiting dot for an added dapp
-(§10.1), and opens the pane on that screen. A gated call from the fronted tab
-opens the pane and raises the unlock prompt over the screen; dismissing the
-prompt leaves the screen and rejects the call `locked` (§6.11). A consent
-sheet for a site without a record is a prompt and is drawn over the screen as
-over any pane (§6.4); it is the only one. A notice of §5 left unanswered, from
-this session's loads or an earlier session, waits for the unlock (§5.2). The
+`freedom://dapps/log`. The screen carries the **Locked** state of §10.1 and
+says that dapps wait for the identity to be unlocked and offers **Unlock**,
+the host's unlock prompt (§6.11). No list, figure or control is reachable
+before it, the narrowing ones included. The indicator is still shown, orange
+for an added dapp and in its usual colour for any other site (§10.1), and
+opens the pane on that screen. A gated call from the fronted tab opens the
+pane and raises the unlock prompt over the screen; dismissing the prompt
+leaves the screen and rejects the call `locked` (§6.11). A consent sheet for a
+site without a record is a prompt and is drawn over the screen as over any
+pane (§6.4); it is the only one. A notice of §5 left unanswered, from this
+session's loads or an earlier session, waits for the unlock (§5.2). The
 shipped providers' own screens (§10.6) are theirs and are not part of this. A
 user who cannot unlock restores or resets the identity with the host's own
 screens (§6.11): nothing here works around the lock.

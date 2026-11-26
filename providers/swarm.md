@@ -58,8 +58,8 @@ capabilities. Their tiers are upstream's.
 | id | tier | scope shape | always-allow | consent-sheet string |
 |---|---|---|---|---|
 | `swarm:publish` | `per-call` | none | eligible | "Publish data to Swarm using your postage" |
-| `swarm:feeds` | `per-call` | none | eligible | "Create and update Swarm feeds signed by an identity for this dapp" |
-| `swarm:signing` | `per-call` | none | eligible | "Sign Swarm chunks with an identity for this dapp" |
+| `swarm:feeds` | `per-call` | none | eligible | "Create and update Swarm feeds signed by an identity for this dApp" |
+| `swarm:signing` | `per-call` | none | eligible | "Sign Swarm chunks with an identity for this dApp" |
 | `swarm:messaging` | `per-call` | none | eligible | "Send and receive Swarm messages" |
 
 How the unified sheet maps to the shipped grant model:
@@ -279,7 +279,7 @@ The explorer's four slots (`SPEC.md` §10.5):
   when `swarm_publishData`'s payload hashes to the CID of a file of the
   same dapp (§10 item 5); a dapp records a `swarm_publishFiles` bundle's
   root reference itself with `files_setPublication({ provider: "swarm",
-  ref })`, shown dapp-reported.
+  ref })`, shown dApp-reported.
 - **Inspector.** The reference, and a `bzz://<ref>/` link.
 - **Verb.** None in this revision (a user-started publish would spend
   postage and pick an identity; left for a later revision).
