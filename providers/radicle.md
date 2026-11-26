@@ -259,6 +259,24 @@ repository page (`SPEC.md` §10.4).
 None: Radicle holds no stored-file records, verbs or panel
 (`SPEC.md` §10.5).
 
+### 9.4 Activity log
+
+What the host records in the dapp activity log for an added dapp
+(`SPEC.md` §6.12):
+
+| method | target | size | detail |
+|---|---|---|---|
+| `radicle_seed`, `radicle_unseed`, `radicle_sync` | the RID | none | none |
+| `radicle_createIssue` | the RID | the title's and description's bytes | the id of the issue created |
+| `radicle_commentIssue`, `radicle_commentPatch` | the RID and the COB id | the body's bytes | none |
+| `radicle_editIssueState` | the RID and the COB id | none | the new state |
+
+Every row also records `via` and `outcome` as `SPEC.md` §6.12 defines: a call
+the user refused, one that failed after it was authorised, and one that hit
+a limit (§7) are entries too, with outcome `refused`, `failed` or `limited`.
+No entry holds a title or a body. Reads are not recorded. `radicle_sync`
+never prompts, so its `via` is `grant`.
+
 ## 10. Host implementation requirements
 
 1. The host MUST leave `window.radicle`'s API, tiers and errors as
@@ -279,8 +297,8 @@ None: Radicle holds no stored-file records, verbs or panel
    development realm too (`SPEC.md` §3.6).
 6. The host MUST validate RIDs and COB ids before crossing the addon
    boundary, as shipped.
-7. The host MUST log every seed, unseed, sync and COB write to the dapp's
-   activity log (`SPEC.md` §6.12).
+7. The host MUST record every seed, unseed, sync and COB write in the
+   dapp activity log as §9.4 says (`SPEC.md` §6.12).
 8. On a tab Freedom Agent holds, the host MUST apply the custody rule to
    every Radicle write (seed, unseed and the COB writes; `radicle_sync`
    never prompts, as shipped): each is prompted, and for an added dapp a

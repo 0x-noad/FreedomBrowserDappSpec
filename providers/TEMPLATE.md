@@ -138,12 +138,18 @@ Binary or other conventions that differ from `SPEC.md` §7: <state them, or
   `ref` format and when the host writes one), inspector facts, a per-file
   verb, a panel; or "none".
 - **Other pages**: any page or pane section this provider owns.
+- **Activity log**: a table with one row per method the host records in
+  the dapp activity log (`SPEC.md` §6.12): every write, every action that
+  leaves the device or commits the user's node, and every read that
+  reaches what another dapp stored on this device. For each: its `target`, its
+  `size`, any `detail`, and what MUST NOT be recorded (a secret name, any
+  content). "None" only for a provider with no such method.
 
 ## 10. Host implementation requirements
 
 Numbered MUST / SHOULD statements for the host, specific to this provider:
 main-process service, how the dapp key is applied, isolation, lock
-behaviour, offline behaviour, what is logged to the activity log
+behaviour, offline behaviour, the logging its §9 table defines
 (`SPEC.md` §6.12), Agent custody (`SPEC.md` §9.2) where writes exist.
 
 *Informative:* where in upstream Freedom this lands (modules to extend).

@@ -285,6 +285,26 @@ The explorer's four slots (`SPEC.md` §10.5):
   postage and pick an identity; left for a later revision).
 - **Panel.** None.
 
+### 9.5 Activity log
+
+What the host records in the dapp activity log for an added dapp
+(`SPEC.md` §6.12):
+
+| method | target | size | detail |
+|---|---|---|---|
+| `swarm_publishData`, `swarm_publishFiles`, `swarm_publishChunk` | the reference produced | the bytes published | the content type, or the file count |
+| `swarm_createFeed`, `swarm_updateFeed`, `swarm_writeFeedEntry` | the feed's name | the payload's bytes | the reference written, where there is one |
+| `swarm_writeSingleOwnerChunk` | the identifier | the payload's bytes | none |
+| `swarm_sendPss`, `swarm_sendGsoc` | the kind and the topic | the payload's bytes | none |
+
+Every row also records `via` and `outcome` as `SPEC.md` §6.12 defines: a call
+the user refused, one that failed after it was authorised, and one that hit
+a limit (§7) are entries too, with outcome `refused`, `failed` or `limited`.
+No entry holds a payload. Reads and subscriptions are not recorded: what
+they reach is the network's, not another dapp's data on this device. The
+publish history of §9.2 is the shipped store and is kept as it is; the log
+is the record this specification adds.
+
 ## 10. Host implementation requirements
 
 1. The host MUST leave `window.swarm`'s API, tiers, limits and stores as
@@ -317,8 +337,8 @@ The explorer's four slots (`SPEC.md` §10.5):
    it emits `dev:<label>:<port>` (`SPEC.md` §3.6), so no store re-keys, nothing
    maps between two spellings, and feed topics
    (`keccak256("<key>/<feed name>")`) are unchanged.
-7. The host MUST log every publish, feed write, SOC write and send to the
-   dapp's activity log (`SPEC.md` §6.12).
+7. The host MUST record every publish, feed write, SOC write and send in
+   the dapp activity log as §9.5 says (`SPEC.md` §6.12).
 8. On a tab Freedom Agent holds, the host MUST apply the custody rule to
    every Swarm write: each is prompted, and for an added dapp a refused
    one is `4100 agent_custody` (`SPEC.md` §9.2).

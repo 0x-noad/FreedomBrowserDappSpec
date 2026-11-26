@@ -388,8 +388,9 @@ also what makes them survive a reinstall. Three consequences for you:
   connected until the user unlocks it once. Your first call beyond the
   public tier, on `window.dapp`, `window.swarm` or `window.radicle`
   (usually `requestCapabilities`), shows the unlock prompt in the tab the
-  user is looking at and completes after it; `getIdentityState().sealed`
-  tells you without prompting. One unlock lasts the session.
+  user is looking at and completes after it; once you are added,
+  `getIdentityState().sealed` tells you without prompting. One unlock
+  lasts the session.
 - After a while idle (Freedom's own setting) the identity **locks**, and
   with it your **safe**. Your files stay readable, private ones included.
   A safe call from the tab the user is looking at shows the unlock prompt
@@ -508,8 +509,11 @@ Rules of the update:
 **What the user can do at any time** from `freedom://dapps` and your
 details page: pause a capability or the whole dapp (`4100 disabled`),
 revoke, see every file you stored (private ones too) and the keys in your
-safe, delete or export any of it, see every publish and feed and an
-activity log of your writes, and remove your dapp. Removal deletes your
+safe, delete or export any of it, see every publish and feed, and remove
+your dapp. They can also read a log of everything your dapp did, on your
+details page and in the dApps pane: every write, everything you sent,
+every call they refused or that failed, and your reads of other dapps'
+shared files (counted by type, never your own data). Removal deletes your
 safe and your private files (after offering an export) and asks whether to
 remove your shared files too. Design for data the user controls: never
 assume a file or a key is still there.

@@ -240,11 +240,11 @@ deleted by revocation.
 
 `SPEC.md` §8.4 applies. The confirm names the bytes in the safe and offers an
 **export** first. On OK the safe and its index are unlinked. The safe is wiped
-at once whatever the vault's state: its blobs are its own and its index goes
-with them. A safe held from a previous build (§8.7) is named in the confirm,
-covered by the export and deleted with the dapp. A safe of the dapp's left
-unreadable by a change of identity (`SPEC.md` §6.11) is named in the confirm
-with its size, cannot be exported, and is deleted with the dapp too.
+at once even while the vault is locked: its blobs are its own and its index
+goes with them. A safe held from a previous build (§8.7) is named in the
+confirm, covered by the export and deleted with the dapp. A safe of the dapp's
+left unreadable by a change of identity (`SPEC.md` §6.11) is named in the
+confirm with its size, cannot be exported, and is deleted with the dapp too.
 
 **Export** writes a decrypted copy to a folder the user chooses: one file
 per key (a JSON value as JSON text, bytes as they are) and an `index.json`
@@ -274,12 +274,12 @@ always-allow toggle.
 
 The **Safe** section (`SPEC.md` §10.4) MUST show:
 
-- usage of 64 MB and the key count, always;
+- usage of 64 MB and the key count, through a lock too;
 - while the vault is unlocked, the list of keys with kind, size and date,
   a **Delete** per key, **Delete all**, and **Export** (§8.6). Values are
   not displayed: they are the dapp's own format, and the user reads them
   by exporting;
-- while the vault is locked or sealed, **Unlock** in place of the list and of
+- while the vault is locked, **Unlock** in place of the list and of
   **Export**; **Delete all** stays, since deleting narrows (`SPEC.md` §6.11);
 - the `safe:store` row with enabled and revoke;
 - a previous build's safe, when a signing-key change left one (§8.7), and a
@@ -297,6 +297,25 @@ None: a safe is not a file store and does not appear in the explorer
 
 None.
 
+### 9.5 Activity log
+
+What the host records in the dapp activity log (`SPEC.md` §6.12):
+
+| method | target | size | detail |
+|---|---|---|---|
+| `safe_set` | none: **never the key** | the stored bytes | none |
+| `safe_delete` | none: never the key | none | none |
+
+Every row also records `via` and `outcome` as `SPEC.md` §6.12 defines: a call
+the user refused, one that failed after it was authorised, and one that hit
+a limit (§7) are entries too, with outcome `refused`, `failed` or `limited`.
+Reads (`safe_get`, `safe_keys`) are the dapp's own data and are not
+recorded. With no target, a visit's safe writes fold into one entry per
+action and outcome (`SPEC.md` §6.12): the log shows that the dapp wrote,
+how often and how much, and nothing a locked safe holds. A value or a
+key the user deletes on the details page is a change entry that names no
+key either.
+
 ## 10. Host implementation requirements
 
 1. The host MUST derive the dapp key for every call in the main process and
@@ -313,10 +332,10 @@ None.
 5. The host MUST treat values as opaque: a JSON value is parsed only to
    check that it is JSON, and bytes are never sniffed or interpreted
    (`SPEC.md` §11 N9).
-6. The host MUST log every `safe_set` and `safe_delete` to the dapp's
-   activity log with the action and the size and **without the key**: the
-   log stays readable while the vault is locked (`SPEC.md` §6.12), and a
-   safe's key names must not.
+6. The host MUST record every `safe_set` and `safe_delete` in the dapp
+   activity log as §9.5 says, **without the key**: the log stays readable
+   while the vault is locked (`SPEC.md` §6.12), and a safe's key names
+   must not.
 7. On a tab Freedom Agent holds (`SPEC.md` §9.2) the host MUST prompt
    every `safe_set` and `safe_delete`, never answering it from the grant
    and naming the action and the size, never the key or the value;

@@ -420,11 +420,10 @@ derived at the first unlock of a session and stays in memory until the browser
 exits, so files of either mark stay readable through later locks; before the
 first unlock nothing is readable (`SPEC.md` §6.11, sealed). Plain per-author
 byte and file counters, split by mark (keyed by dapp key, figures only, never
-names) keep `files_getQuota` and the explorer's usage figures working while
-sealed. The data is **not** editable in the operating system's file manager;
-the user's way in and out is `freedom://files` (`SPEC.md` §10.5).
-*Informative:* under the profile directory, `dapp-files/` (`SPEC.md` Appendix
-A).
+names) keep `files_getQuota` answering before it. The data is **not** editable
+in the operating system's file manager; the user's way in and out is
+`freedom://files` (`SPEC.md` §10.5). *Informative:* under the profile
+directory, `dapp-files/` (`SPEC.md` Appendix A).
 
 ### 8.8 Accounting
 
@@ -481,12 +480,9 @@ dapp: no other dapp could ever read them. For its **shared** files the confirm
 asks whether to remove them too, **keep** being the default because other
 dapps may be reading them. Shared files that are kept stay attributed to the
 removed dapp key and remain deletable in `freedom://files`; files that are
-removed raise `files:changed` deletions for their readers. While the vault is
-sealed the pool's index is unreadable and the host cannot tell the dapp's
-files apart, so this part of the removal is recorded and applied at the next
-unseal, as the user answered, raising its ordinary `deleted` events then
-(`SPEC.md` §8.4). Private files held from a previous build (§8.11) are deleted
-with the dapp, after the same export offer.
+removed raise `files:changed` deletions for their readers. Private files held
+from a previous build (§8.11) are deleted with the dapp, after the same export
+offer.
 
 ### 8.11 After a signing-key change
 
@@ -533,21 +529,21 @@ The **Files** section (`SPEC.md` §10.4) MUST show:
 
 The explorer is a core surface (`SPEC.md` §10.5). Files supplies what it
 shows: every file in the pool, of every author and either mark, with the facts
-in `entry`, plus the Agent controls of §9.4 and the Agent log. The user sees
-private files too: the mark keeps a file from other dapps, not from its
-owner's user. **Add files** adds with author `user`, shared, under §8.3, §8.4
-and the pool cap; **Export** writes a decrypted copy with an `index.json` that
-maps each written file to its `name`, author, mark, type and CID (on-disk file
-names are the host's choice where authors' names collide); **Delete** removes
-the file with its publication records (§8.6) and raises `deleted` for its
-readers (§5). The user may change the mark of a dapp's file there (files of
-`user` and `agent` are always shared; marking a file shared needs the vault
-unlocked, `SPEC.md` §6.11); the author dapp receives `visibility`. Private
-files held from a previous build (§8.11) are listed apart with **Export** and
-**Delete** only, and a pool left unreadable by a change of identity is one
-"from a previous identity" entry with its size and **Delete** (`SPEC.md`
-§6.11). Files fills none of the four provider slots: the publication column
-reads the records of §8.6, which other providers write.
+in `entry`, plus the Agent controls of §9.4. The user sees private files too:
+the mark keeps a file from other dapps, not from its owner's user. **Add
+files** adds with author `user`, shared, under §8.3, §8.4 and the pool cap;
+**Export** writes a decrypted copy with an `index.json` that maps each written
+file to its `name`, author, mark, type and CID (on-disk file names are the
+host's choice where authors' names collide); **Delete** removes the file with
+its publication records (§8.6) and raises `deleted` for its readers (§5). The
+user may change the mark of a dapp's file there (files of `user` and `agent`
+are always shared; marking a file shared needs the vault unlocked, `SPEC.md`
+§6.11); the author dapp receives `visibility`. Private files held from a
+previous build (§8.11) are listed apart with **Export** and **Delete** only,
+and a pool left unreadable by a change of identity is one "from a previous
+identity" entry with its size and **Delete** (`SPEC.md` §6.11). Files fills
+none of the four provider slots: the publication column reads the records of
+§8.6, which other providers write.
 
 ### 9.4 Freedom Agent
 
@@ -585,14 +581,42 @@ reads or lists a private file.
   listing and moves no counter: dapps cannot detect it and are told to
   treat the shared folder as published. An Agent add is an ordinary change
   for readers whose subscription names its type.
-- **Log.** Every Agent read and add is logged for the user in the Agent's
-  own log (`SPEC.md` §6.12; shown in the explorer, `SPEC.md` §10.5) with
-  file, time and the conversation it served. Dapps' activity logs never
-  carry Agent entries.
+- **Shown to the user.** Every Agent read and add appears in the Agent's
+  own conversation, as each of its tool calls does, and a file it adds
+  carries author `agent` in the explorer. The session log records each
+  one too, grouped by conversation, with the file's author, name, type
+  and size (`SPEC.md` §6.12); a dapp's activity log never carries Agent
+  entries.
 
 ### 9.5 Other pages
 
 None beyond the Agent controls of §9.4.
+
+### 9.6 Activity log
+
+What the host records in the dapp activity log (`SPEC.md` §6.12):
+
+| method | target | size | detail |
+|---|---|---|---|
+| `files_write`, `files_writeJson` | the file's name | the bytes written | the resulting mark; whether the file was created or overwritten |
+| `files_delete` | the file's name | the bytes freed | none |
+| `files_rename` | the new name | none | the old name |
+| `files_copy` | the new name | the bytes copied | the resulting mark; the source `{ author, name }` |
+| `files_setVisibility` | the file's name | none | the new mark |
+| `files_setPublication` | the file's name | none | the provider and the `ref` |
+| `files_read`, `files_readJson`, `files_stat` of **another author's** file | none | the bytes read (none for `stat`) | the file type; how many files and how many authors |
+| `files_list`, `files_subscribe` over the shared folder (any but `author: "self"`) | none | none | the `types` patterns asked for |
+
+Every row also records `via` and `outcome` as `SPEC.md` §6.12 defines: a call
+the user refused, one that failed after it was authorised, and one that hit
+a limit (§7) are entries too, with outcome `refused`, `failed` or `limited`.
+The last two rows are the shared-folder reads. They always fold: reads
+into one entry per visit, action and type of the files read, listings
+and subscriptions into one per visit and action, each with a count and
+no file name (`SPEC.md` §6.12). A
+copy from another author's file is recorded once, as the write it is,
+with its source. A dapp's reads of its own files, and listings with
+`author: "self"`, are not recorded.
 
 ## 10. Host implementation requirements
 
@@ -626,10 +650,10 @@ None beyond the Agent controls of §9.4.
    `verified: true` only from a provider's own main-process publish path
    on a CID match, with `verified: false` from `files_setPublication`,
    one per provider per file, each emitting `published`.
-9. The host MUST log every write, delete, rename, copy, setVisibility and
-   setPublication (writeJson as a write) to the dapp's activity log with the
-   file's resulting mark and, for a copy or a rename, its source (`SPEC.md`
-   §6.12), and every Agent read and add to the Agent's.
+9. The host MUST record every write, delete, rename, copy, setVisibility
+   and setPublication, and every read, listing and subscription that
+   reaches the shared folder, in the dapp activity log as §9.6 says
+   (`SPEC.md` §6.12).
 10. On a tab Freedom Agent holds, the host MUST prompt every Files write with
     its content, never answering it from the grant; **Don't allow** is `4100
     agent_custody` (`SPEC.md` §9.2).
@@ -677,7 +701,8 @@ item 5).
   ciphertext without the recovery phrase (§8.7).
 - **Agent.** The Agent is a reader and adder of shared files only, under
   explicit off-by-default switches, never of a private file or a safe,
-  undetectably to dapps, and always logged (N3a).
+  undetectably to dapps, and always shown to the user in its own
+  conversation (N3a).
 - **Oracles.** `not_found` and an empty list are the only answers about
   what is absent (N4): another author's private file and a file that never
   existed are indistinguishable. No Files call can tell a dapp whether
@@ -729,9 +754,9 @@ Conformance checklist (`examples/files/`):
       completes on unlock; after that, locking the vault changes nothing
       for any Files call, private files included, except that accepting
       the storage prompt asks for unlock;
-- [ ] an Agent read under its grant raises no event and appears in the
-      Agent log; no Agent tool returns or lists a private file, and the
-      tools fail `locked` while the vault is sealed;
+- [ ] an Agent read under its grant raises no event and is shown in the
+      Agent's conversation; no Agent tool returns or lists a private file,
+      and the tools fail `locked` while the vault is sealed;
 - [ ] a dapp holding `files:read` alone reads its own shared file; its own
       key as `author` in a type query lists its shared files only;
       `visibility` on a listing that is not `author: "self"` is
@@ -749,7 +774,10 @@ Conformance checklist (`examples/files/`):
 - [ ] after a signing-key change the previous build's private files are
       listed apart for export or deletion only and its shared files are
       the user's (§8.11);
-- [ ] exports carry `index.json`; removal while sealed is applied at the
-      next unseal; the development pool is closed to the Agent and to
-      **Add files**; log entries carry the file's mark and a copy's or
-      rename's source.
+- [ ] exports carry `index.json`; the development pool is closed to the
+      Agent and to **Add files**;
+- [ ] the dapp activity log carries each write with the file's mark and a
+      copy's or rename's source, and each shared-folder read, listing and
+      subscription folded per visit and type with no file name (§9.6);
+      an Agent read or add appears in the session log and in no dapp's
+      activity log.
