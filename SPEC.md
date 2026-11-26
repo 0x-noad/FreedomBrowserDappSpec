@@ -811,17 +811,22 @@ every added dapp:
   write, SOC write and send; Radicle seed, unseed, sync and COB write;
 - every wallet transaction the dapp sends (§6.14): `target` is the chain
   and the recipient, `detail` the value and the transaction hash. The
-  wallet signs only with the vault unlocked, so these too fall inside a
-  session;
+  entry is made when the transaction is sent, with outcome `ok`: a
+  rejected approval and the transaction's later fate belong to the
+  wallet's own history. The wallet signs only with the vault unlocked,
+  so these too fall inside a session;
 - every read that reaches **another author's** shared file, and every
   type-named listing or subscription over the shared folder
   (`providers/files.md` §9.6). A dapp's reads of its own safe and its own
   files are not recorded;
 - every such call the user **refused** on its prompt, that **failed**
-  after it was authorised, or that hit a **limit** (a quota, a per-item
-  cap, a rate limit). A call rejected for its parameters, for a missing
-  or paused grant, for a pending notice or by the lock makes no entry: it
-  never came to act.
+  once it came to act, or that hit a **limit** (a quota, a per-item cap,
+  a rate limit). By code: `refused` is a `4001` on the call's own prompt
+  and a `4100 agent_custody`; `failed` is `4900` and `-32603`, a timeout
+  included, and any other reason a provider's table names; `limited` is
+  `4300` and `-32005`. Every other rejection makes no entry, even after
+  a prompt was answered: a `-32602`, a `4409`, a missing or paused grant,
+  a pending notice, the lock. The call never came to act.
 
 An entry has these fields, and each provider's table says how its methods
 fill them:
@@ -833,7 +838,7 @@ fill them:
 | `provider`, `action` | the provider id and the method name (`files`, `files_write`); `wallet` and `transaction` for a wallet transaction |
 | `target` | what was acted on, as the provider's table defines; absent where the table says so |
 | `size` | the bytes written, sent or read, where the table defines one |
-| `via` | what answered for the call: `grant` (a grant alone, with no prompt), `always-allow`, `prompt` (the call was put to the user on its own prompt), `custody` (it was put to the user on a tab Freedom Agent holds, §9.2), or `wallet` (the wallet's own approval, §6.14). Absent when the call was stopped by a limit before anything answered |
+| `via` | what answered for the call: `grant` (a grant alone, with no prompt), `always-allow`, `prompt` (the call was put to the user on its own prompt), `custody` (it was put to the user on a tab Freedom Agent holds, §9.2), or `wallet` (the wallet's own approval, §6.14). Absent on a `limited` entry |
 | `outcome` | `ok`; `failed`, with the error code and reason; `refused` (the user said no on the prompt); or `limited`, with the reason |
 | `detail` | facts the provider's table adds (a file's resulting mark, a copy's source) |
 | `count`, `until` | on a folded entry: how many calls it stands for, and the time of the last |
@@ -851,7 +856,9 @@ connected opens a visit of its own.
 
 - within a visit, `ok` and `refused` calls with the same `action`,
   `target` and `via` fold into one entry, with `count`, `until` and the
-  summed `size`;
+  summed `size`. The entry carries the `detail` of its last call, unless
+  the provider's table names a detail that must also match for calls to
+  fold;
 - `failed` and `limited` calls fold by `action`, `outcome`, code and
   reason alone and carry no target, so a dapp cannot spend the log's
   room on calls that did nothing;
@@ -864,7 +871,8 @@ connected opens a visit of its own.
   further `ok` and `refused` calls fold by `action` and `via` alone,
   without a target;
 - a dapp keeps at most 100 visits and 2 000 targeted entries per
-  provider in one day. Beyond that the day's further visits fold into
+  provider in one calendar day of the device's time zone, counted across
+  sessions. Beyond that the day's further visits fold into
   one row, and their calls by `action`, `via` and `outcome` alone.
 
 Every call is counted and none is dropped, so a dapp can neither push an
@@ -882,19 +890,20 @@ a dapp's own `dapp_relinquish`. The host MUST record at least:
 | pausing | a dapp or a capability paused or resumed |
 | updates | an update notice raised; approved, with the old and new version and any capability added; declined; a manifest found missing or invalid (§5.6) |
 | signing | a signing-key warning raised, with its kind; the dapp re-added or removed after it; a rotation accepted (§5.7) |
-| storage | an allowance changed, and whether through the storage prompt; the pool cap changed; safe values, a held store or files deleted or exported by the user (never naming a safe key); files added, re-marked or published by the user in `freedom://files` (folded by action) |
+| storage | an allowance changed, and whether through the storage prompt; the pool cap changed; safe values, a held store or files deleted or exported by the user (never naming a safe key); files added or re-marked by the user in `freedom://files`, and files published there where a provider offers the verb (§10.5 slot 3), folded by action |
 | provider controls | a control the user used in a provider's section of a details page (a Radicle unseed), and a wallet disconnect there |
 | development | the developer setting turned on or off; development data wiped |
 | the log | a dapp's activity list cleared on its details page; the whole log cleared (the first entry of the store that follows) |
 
 **Agent entries** (`type: "agent"`) record Freedom Agent's part (§9): its
-shared read and add switches turned on or off; every shared file it listed,
-read or added, with the file's author, name, type and size and the
-conversation it served, grouped by conversation; and every prompt the user
-answered for an added dapp on a tab the Agent held (§9.2), grouped by the
-stretch it held that tab. A write answered there is one entry seen from both
-sides: it is in its dapp's visit with `via: "custody"`, and in the Agent's
-group. A group folds as a visit does.
+shared read and add switches turned on or off; every shared file it read or
+added, with the file's author, name, type and size and the conversation it
+served, and each listing it made as one entry with the patterns asked for and
+the number of files returned, all grouped by conversation; and every prompt
+the user answered for an added dapp on a tab the Agent held (§9.2), grouped by
+the stretch it held that tab. A write answered there is one entry seen from
+both sides: it is in its dapp's visit with `via: "custody"`, and in the
+Agent's group. A group folds as a visit does.
 
 **Session entries** (`type: "session"`) mark the session's start, at the
 first unlock, and each later lock and unlock.
@@ -1256,7 +1265,10 @@ origin), the host shows the label **dApp** in the address bar: hidden when the
 site is not a dapp, **grey** when it is a dapp that is not connected (not
 added, paused, or waiting on a prompt, an update or the first unlock of the
 session, §6.11, with a small dot for the waiting states), **purple**
-(`#8b5cf6`) when connected. Clicking it opens the sidebar on the dApps pane.
+(`#8b5cf6`) when connected. The dot is for added dapps: a site without a
+record shows none. Before the first unlock every added dapp shows it, whatever
+else is true of it, since the wait for the unlock comes before "paused" and
+"update pending". Clicking the indicator opens the sidebar on the dApps pane.
 Where the address bar is too narrow for the label (a narrow window, a phone),
 the host MAY show the letter **d** alone, with the same colours and behaviour.
 The indicator is always shown on such a tab: no setting hides it. Its
@@ -1337,8 +1349,9 @@ collapsed one.
    coloured by type:
    - **dapp activity**, in the connected colour (§10.1): one row per
      visit, with the dapp's icon and name, the visit's start and end and
-     its number of actions. The row expands to that visit's entries,
-     drawn exactly as on the dapp's details page (§10.4);
+     its number of actions. The row expands to that visit's entries:
+     the same rows as on the dapp's details page (§10.4), here oldest
+     first as the log is;
    - **changes**, in beige: one row per change entry;
    - **Freedom Agent**, in blue: one row per switch change, one
      expandable row per Agent conversation holding the shared files it
@@ -1501,21 +1514,22 @@ screen.
 
 ### 10.7 Sealed and locked identity
 
-**Before the first unlock of a session** every surface of this section
-but the address-bar indicator shows the **unlock screen** and nothing
-else: the dApps pane, `freedom://dapps`, the details pages,
-`freedom://files` and `freedom://dapps/log`. The screen says that dapps
-wait for the identity to be unlocked and offers **Unlock**, the host's
-unlock prompt (§6.11). No list, figure or control is reachable before it,
-the narrowing ones included. The indicator is still shown, grey with the
-waiting dot (§10.1), and opens the pane on that screen. A gated call from
-the fronted tab opens the pane and raises the unlock prompt over the
-screen; dismissing the prompt leaves the screen and rejects the call
-`locked` (§6.11). A consent sheet for a site without a record is a prompt
-and is drawn over the screen as over any pane (§6.4). The shipped
-providers' own screens (§10.6) are theirs and are not part of this. A
-user who cannot unlock restores or resets the identity with the host's
-own screens (§6.11): nothing here works around the lock.
+**Before the first unlock of a session** every surface of this section but the
+address-bar indicator shows the **unlock screen** and nothing else: the dApps
+pane, `freedom://dapps`, the details pages, `freedom://files` and
+`freedom://dapps/log`. The screen says that dapps wait for the identity to be
+unlocked and offers **Unlock**, the host's unlock prompt (§6.11). No list,
+figure or control is reachable before it, the narrowing ones included. The
+indicator is still shown, grey, with the waiting dot for an added dapp
+(§10.1), and opens the pane on that screen. A gated call from the fronted tab
+opens the pane and raises the unlock prompt over the screen; dismissing the
+prompt leaves the screen and rejects the call `locked` (§6.11). A consent
+sheet for a site without a record is a prompt and is drawn over the screen as
+over any pane (§6.4); it is the only one. A notice of §5 left unanswered, from
+this session's loads or an earlier session, waits for the unlock (§5.2). The
+shipped providers' own screens (§10.6) are theirs and are not part of this. A
+user who cannot unlock restores or resets the identity with the host's own
+screens (§6.11): nothing here works around the lock.
 
 **After it, while the vault is locked**, every surface stays open: every
 fact and every narrowing control works, and every widening control

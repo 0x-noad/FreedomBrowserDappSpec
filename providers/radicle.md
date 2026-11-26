@@ -275,7 +275,9 @@ Every row also records `via` and `outcome` as `SPEC.md` §6.12 defines: a call
 the user refused, one that failed after it was authorised, and one that hit
 a limit (§7) are entries too, with outcome `refused`, `failed` or `limited`.
 No entry holds a title or a body. Reads are not recorded. `radicle_sync`
-never prompts, so its `via` is `grant`.
+never prompts, so its `via` is `grant`. A COB write that rejects
+`announce_failed` is recorded with outcome `failed` although its code is
+`-32602`: the write was made before announcing it failed.
 
 ## 10. Host implementation requirements
 

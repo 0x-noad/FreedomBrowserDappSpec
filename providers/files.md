@@ -585,8 +585,9 @@ reads or lists a private file.
   own conversation, as each of its tool calls does, and a file it adds
   carries author `agent` in the explorer. The session log records each
   one too, grouped by conversation, with the file's author, name, type
-  and size (`SPEC.md` §6.12); a dapp's activity log never carries Agent
-  entries.
+  and size, and each `dapp_files_list` as one entry with its patterns
+  and the number of files returned (`SPEC.md` §6.12); a dapp's activity
+  log never carries Agent entries.
 
 ### 9.5 Other pages
 
@@ -617,6 +618,17 @@ no file name (`SPEC.md` §6.12). A
 copy from another author's file is recorded once, as the write it is,
 with its source. A dapp's reads of its own files, and listings with
 `author: "self"`, are not recorded.
+
+Calls fold only when the **resulting mark** is the same (`SPEC.md` §6.12):
+a write, a copy or a `setVisibility` that leaves a file with a different
+mark starts a new entry, so the time a file spent shared is never folded
+away. Other details are the last call's.
+
+The storage prompt (§8.8) asks about the allowance, not about the call.
+A write it was shown for is recorded as any other: `limited` with
+`dapp_quota` when the user answered **Not now** or the wait ended, and
+with the `via` it would have had when they accepted. The accepted figure
+is a change entry of its own (`SPEC.md` §6.12).
 
 ## 10. Host implementation requirements
 
